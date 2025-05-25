@@ -77,15 +77,15 @@ const tableHeight = computed(() => {
 const resourcesType = ref<string[]>(["video"])
 
 const classifyAlias: { [key: string]: any } = {
-  image: computed(() => t("index.image")),
-  audio: computed(() => t("index.audio")),
   video: computed(() => t("index.video")),
   m3u8: computed(() => t("index.m3u8")),
   live: computed(() => t("index.live")),
-  xls: computed(() => t("index.xls")),
-  doc: computed(() => t("index.pdf")),
-  pdf: computed(() => t("index.pdf")),
-  font: computed(() => t("index.font"))
+  audio: computed(() => t("index.audio")),
+  image: computed(() => t("index.image")),
+  // xls: computed(() => t("index.xls")),
+  // doc: computed(() => t("index.doc")),
+  // pdf: computed(() => t("index.pdf")),
+  // font: computed(() => t("index.font"))
 }
 
 const dwStatus = computed<any>(() => {
