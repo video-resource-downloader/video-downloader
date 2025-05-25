@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts" setup>
-import {NButton, NImage, NTooltip} from "naive-ui"
+import {NButton, NImage, NTooltip, NTag} from "naive-ui"
 import {computed, h, onMounted, ref, reactive, watch} from "vue"
 import type {appType} from "@/types/app"
 
@@ -180,7 +180,19 @@ const columns = ref<any[]>([
     key: "Status",
     width: 100,
     render: (row: appType.MediaInfo) => {
-      return dwStatus[row.Status as keyof typeof dwStatus]
+      const status = row.Status || dwStatus.value.ready
+      const statusMap = {
+        ready: { type: 'info' as const },
+        running: { type: 'warning' as const },
+        error: { type: 'error' as const },
+        done: { type: 'success' as const },
+        handle: { type: 'default' as const }
+      }
+      return h(NTag, {
+        type: statusMap[status as keyof typeof statusMap].type,
+        bordered: false,
+        size: 'small'
+      }, { default: () => dwStatus.value[status] })
     }
   },
   {
