@@ -4,13 +4,15 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/vrischmann/userdir"
 	"os"
 	"path/filepath"
 	"regexp"
-	"res-downloader/core/shared"
 	"strconv"
 	"time"
+
+	"github.com/vrischmann/userdir"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type App struct {
@@ -47,9 +49,9 @@ func GetApp(assets embed.FS, wjs string) *App {
 
 		appOnce = &App{
 			assets:      assets,
-			AppName:     "res-downloader",
+			AppName:     "video-downloader",
 			Version:     version,
-			Description: "res-downloader是一款集网络资源嗅探 + 高速下载功能于一体的软件，高颜值、高性能和多样化，提供个人用户下载自己上传到各大平台的网络资源功能！",
+			Description: "video-downloader是一款集网络资源嗅探 + 高速下载功能于一体的软件，高颜值、高性能和多样化，提供个人用户下载自己上传到各大平台的网络资源功能！",
 			Copyright:   "Copyright © 2023~" + strconv.Itoa(time.Now().Year()),
 			PublicCrt: []byte(`-----BEGIN CERTIFICATE-----
 MIIDwzCCAqugAwIBAgIUFAnC6268dp/z1DR9E1UepiWgWzkwDQYJKoZIhvcNAQEL

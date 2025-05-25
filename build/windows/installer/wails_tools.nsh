@@ -5,13 +5,13 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "res-downloader"
+    !define INFO_PROJECTNAME "video-downloader"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "res-downloader"
+    !define INFO_COMPANYNAME "video-downloader"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "res-downloader"
+    !define INFO_PRODUCTNAME "video-downloader"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "3.0.6"

@@ -1,8 +1,9 @@
 package shared
 
 import (
-	"github.com/elazarl/goproxy"
 	"net/http"
+
+	"github.com/elazarl/goproxy"
 )
 
 type Bridge struct {

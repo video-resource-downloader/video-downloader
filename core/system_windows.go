@@ -6,9 +6,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"unsafe"
+
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
-	"unsafe"
 )
 
 func (s *SystemSetup) setProxy() error {

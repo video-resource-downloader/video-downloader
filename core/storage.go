@@ -3,7 +3,8 @@ package core
 import (
 	"os"
 	"path"
-	"res-downloader/core/shared"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type Storage struct {

@@ -1,5 +1,5 @@
 ## 软件下载
-🆕 [github下载](https://github.com/putyy/res-downloader/releases)  
+🆕 [github下载](https://github.com/video-resource-downloader/video-downloader/releases)  
 🆕 [蓝奏云下载 密码:9vs5](https://wwjv.lanzoum.com/b04wgtfyb)
 
 !> Win7用户请使用2.3.0版本

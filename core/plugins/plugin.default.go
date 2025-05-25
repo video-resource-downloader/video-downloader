@@ -2,11 +2,13 @@ package plugins
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
 	"github.com/elazarl/goproxy"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"net/http"
-	"res-downloader/core/shared"
-	"strconv"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type DefaultPlugin struct {

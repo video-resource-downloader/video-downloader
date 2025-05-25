@@ -4,10 +4,11 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/net/publicsuffix"
 	"net/url"
 	"os"
 	"time"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 func Md5(data string) string {

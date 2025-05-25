@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/elazarl/goproxy"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"io"
 	"net/http"
 	"regexp"
-	"res-downloader/core/shared"
 	"strconv"
 	"strings"
+
+	"github.com/elazarl/goproxy"
+	gonanoid "github.com/matoous/go-nanoid/v2"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type QqPlugin struct {
@@ -27,7 +29,7 @@ func (p *QqPlugin) Domains() []string {
 }
 
 func (p *QqPlugin) OnRequest(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-	if strings.Contains(r.Host, "qq.com") && strings.Contains(r.URL.Path, "/res-downloader/wechat") {
+	if strings.Contains(r.Host, "qq.com") && strings.Contains(r.URL.Path, "/video-downloader/wechat") {
 		if p.bridge.GetConfig("WxAction").(bool) && r.URL.Query().Get("type") == "1" {
 			return p.handleWechatRequest(r, ctx)
 		} else if !p.bridge.GetConfig("WxAction").(bool) && r.URL.Query().Get("type") == "2" {
@@ -76,7 +78,7 @@ func (p *QqPlugin) OnResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *http.
 				ReplaceAllString(bodyStr, `
 							get media(){
 								if(this.objectDesc){
-									fetch("https://wxapp.tc.qq.com/res-downloader/wechat?type=1", {
+									fetch("https://wxapp.tc.qq.com/video-downloader/wechat?type=1", {
 									  method: "POST",
 									  mode: "no-cors",
 									  body: JSON.stringify(this.objectDesc),
@@ -90,7 +92,7 @@ func (p *QqPlugin) OnResponse(resp *http.Response, ctx *goproxy.ProxyCtx) *http.
 							async finderGetCommentDetail($1) {
 								var res = await$2;
 								if (res?.data?.object?.objectDesc) {
-									fetch("https://wxapp.tc.qq.com/res-downloader/wechat?type=2", {
+									fetch("https://wxapp.tc.qq.com/video-downloader/wechat?type=2", {
 									  method: "POST",
 									  mode: "no-cors",
 									  body: JSON.stringify(res.data.object.objectDesc),

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"io"
 	"log"
 	"net"
@@ -13,9 +12,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"res-downloader/core/shared"
 	sysRuntime "runtime"
 	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type respData map[string]interface{}
@@ -56,7 +58,7 @@ func (h *HttpServer) run() {
 
 func (h *HttpServer) downCert(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-x509-ca-data")
-	w.Header().Set("Content-Disposition", "attachment;filename=res-downloader-public.crt")
+	w.Header().Set("Content-Disposition", "attachment;filename=video-downloader-public.crt")
 	w.Header().Set("Content-Transfer-Encoding", "binary")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(appOnce.PublicCrt)))
 	w.WriteHeader(http.StatusOK)
@@ -402,7 +404,7 @@ func (h *HttpServer) batchImport(w http.ResponseWriter, r *http.Request) {
 		h.error(w, err.Error())
 		return
 	}
-	fileName := filepath.Join(globalConfig.SaveDirectory, "res-downloader-"+shared.GetCurrentDateTimeFormatted()+".txt")
+	fileName := filepath.Join(globalConfig.SaveDirectory, "video-downloader-"+shared.GetCurrentDateTimeFormatted()+".txt")
 	err := os.WriteFile(fileName, []byte(data.Content), 0644)
 	if err != nil {
 		h.error(w, err.Error())

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=video-downloader
+Comment=This is a high-value and high-performance and diverse resource downloader called video-downloader
+Exec=/usr/bin/video-downloader
+Icon=/usr/share/icons/hicolor/256x256/apps/video-downloader
+Terminal=false
+Categories=Utility;

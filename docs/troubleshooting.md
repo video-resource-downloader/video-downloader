@@ -11,26 +11,26 @@
 > 删除对应目录, 然后重启
 ```
 ## Mac执行
-rm -rf /Users/$(whoami)/Library/Preferences/res-downloader
+rm -rf /Users/$(whoami)/Library/Preferences/video-downloader
 
 ## Windows手动删除以下目录，Administrator为用户名 通常如下：
-C:\Users\Administrator\AppData\Roaming\res-downloader
+C:\Users\Administrator\AppData\Roaming\video-downloader
 
 ## Linux手动删除以下目录
-/home/user/.config/res-downloader/home/user/.config/res-downloader
+/home/user/.config/video-downloader/home/user/.config/video-downloader
 ```
 
 ## 某应用只支持手机打开 如何拦截？
 > 这里需要注意的是 应用使用http协议通讯才能拦截，且安卓7.0以上系统不再信任用户CA证书 所以没法拦截，解决方案自行查找，
 ```
 1. 将手机和电脑处于同一个网络
-2. 在手机端安装res-downloader的证书
-3. 将手机网络代理设置为res-downloader的代理
+2. 在手机端安装video-downloader的证书
+3. 将手机网络代理设置为video-downloader的代理
 4. 正常使用
 ```
 
 ## Mac 提示“已损坏，无法打开”, 打开命令行执行如下命令：
-> sudo xattr -d com.apple.quarantine /Applications/res-downloader.app
+> sudo xattr -d com.apple.quarantine /Applications/video-downloader.app
 
 ## 打开本软件，无法正常拦截获取
 > 检查系统证书是否安装  
@@ -46,7 +46,7 @@ C:\Users\Administrator\AppData\Roaming\res-downloader
 
 - Mac手动安装证书(V3+版本支持)，打开终端复制以下命令 粘贴到终端回车 按照提示输入密码，完成后再打开软件：
 ```shell
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /Users/$(whoami)/Library/Preferences/res-downloader/cert.crt && touch /Users/$(whoami)/Library/Preferences/res-downloader/install.lock && echo "安装完成"
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /Users/$(whoami)/Library/Preferences/video-downloader/cert.crt && touch /Users/$(whoami)/Library/Preferences/video-downloader/install.lock && echo "安装完成"
 ```
 
 ## 拦截不到小程序中的资源
@@ -72,6 +72,6 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 ## 安装证书后还会提示安装
 使用命令行打开本软件，查看 “lockfile:” 这串字符后面的锁文件路径，然后创建该文件即可  
 例如 mac系统下终端执行如下命令即可创建  
-> touch /Users/你的用户名/Library/Preferences/res-downloader/install.lock
+> touch /Users/你的用户名/Library/Preferences/video-downloader/install.lock
 
-## 更多问题 请前往github进行[反馈](https://github.com/putyy/res-downloader/issues)
+## 更多问题 请前往github进行[反馈](https://github.com/video-resource-downloader/video-downloader/issues)

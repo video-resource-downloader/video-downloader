@@ -1,14 +1,14 @@
 <div align="center">
 
-<a href="https://github.com/putyy/res-downloader"><img src="images/logo.png" width="120"/></a>
-<h1>res-downloader</h1>
-<h4>📖 中文 | <a href="https://github.com/putyy/res-downloader/blob/master/README-EN.md">English</a></h4>
+<a href="https://github.com/video-resource-downloader/video-downloader"><img src="images/logo.png" width="120"/></a>
+<h1>video-downloader</h1>
+<h4>📖 中文 | <a href="https://github.com/video-resource-downloader/video-downloader/blob/master/README-EN.md">English</a></h4>
 
-[![GitHub stars](https://img.shields.io/github/stars/putyy/res-downloader)](https://github.com/putyy/res-downloader/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/putyy/res-downloader)](https://github.com/putyy/res-downloader/fork)
-[![GitHub release](https://img.shields.io/github/release/putyy/res-downloader)](https://github.com/putyy/res-downloader/releases)
-![GitHub All Releases](https://img.shields.io/github/downloads/putyy/res-downloader/total)
-[![License](https://img.shields.io/github/license/putyy/res-downloader)](https://github.com/putyy/res-downloader/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/video-resource-downloader/video-downloader)](https://github.com/video-resource-downloader/video-downloader/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/video-resource-downloader/video-downloader)](https://github.com/video-resource-downloader/video-downloader/fork)
+[![GitHub release](https://img.shields.io/github/release/video-resource-downloader/video-downloader)](https://github.com/video-resource-downloader/video-downloader/releases)
+![GitHub All Releases](https://img.shields.io/github/downloads/video-resource-downloader/video-downloader/total)
+[![License](https://img.shields.io/github/license/video-resource-downloader/video-downloader)](https://github.com/video-resource-downloader/video-downloader/blob/master/LICENSE)
 
 </div>
 
@@ -30,12 +30,12 @@
 
 - 📘 [在线文档](https://res.putyy.com/)
 - 💬 [加入交流群](https://www.putyy.com/app/admin/upload/img/20250418/6801d9554dc7.webp)
-- 🧩 [最新版](https://github.com/putyy/res-downloader/releases) ｜ [Mini版 使用默认浏览器展示UI](https://github.com/putyy/resd-mini) ｜ [Electron旧版 支持Win7](https://github.com/putyy/res-downloader/tree/old)
+- 🧩 [最新版](https://github.com/video-resource-downloader/video-downloader/releases) ｜ [Mini版 使用默认浏览器展示UI](https://github.com/putyy/resd-mini) ｜ [Electron旧版 支持Win7](https://github.com/video-resource-downloader/video-downloader/tree/old)
   > *群满时可加微信 `AmorousWorld`，请备注“来源”*
 
 ## 🧩 下载地址
 
-- 🆕 [GitHub 下载](https://github.com/putyy/res-downloader/releases)
+- 🆕 [GitHub 下载](https://github.com/video-resource-downloader/video-downloader/releases)
 - 🆕 [蓝奏云下载（密码：9vs5）](https://wwjv.lanzoum.com/b04wgtfyb)
 - ⚠️ *Win7 用户请下载 `2.3.0` 版本*
 
@@ -48,7 +48,7 @@
 
 ### 🧠 更多问题
 
-- [GitHub Issues](https://github.com/putyy/res-downloader/issues)
+- [GitHub Issues](https://github.com/video-resource-downloader/video-downloader/issues)
 - [爱享论坛讨论帖](https://s.gowas.cn/d/4089)
 
 ## 💡 实现原理 & 初衷

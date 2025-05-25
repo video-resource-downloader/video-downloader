@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=video-downloader
+Comment=This is a high-value and high-performance and diverse resource downloader called video-downloader
+Exec=video-downloader
+Icon=video-downloader.png
+Terminal=false
+Categories=Utility;

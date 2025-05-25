@@ -1,6 +1,6 @@
 <div align="center">
-<a href="https://github.com/putyy/res-downloader"><img src="images/logo.png" width="120"/></a>
-<h1><strong>res-downloader</strong></h1>
+<a href="https://github.com/video-resource-downloader/video-downloader"><img src="images/logo.png" width="120"/></a>
+<h1><strong>video-downloader</strong></h1>
 </div>
 
 > 全新技术栈，更新、更小、更快、更稳

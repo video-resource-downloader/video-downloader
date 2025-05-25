@@ -9,10 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"res-downloader/core/shared"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type WxFileDecodeResult struct {

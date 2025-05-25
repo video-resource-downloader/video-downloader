@@ -7,12 +7,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"res-downloader/core/plugins"
-	"res-downloader/core/shared"
 	"strings"
 	"time"
 
 	"github.com/elazarl/goproxy"
+
+	"github.com/video-resource-downloader/video-downloader/core/plugins"
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type Proxy struct {

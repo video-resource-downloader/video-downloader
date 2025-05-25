@@ -2,11 +2,13 @@ package core
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"io"
 	"os"
 	"path/filepath"
-	"res-downloader/core/shared"
+
+	"github.com/rs/zerolog"
+
+	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
 type Logger struct {
