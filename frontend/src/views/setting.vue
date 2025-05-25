@@ -22,7 +22,7 @@
       </NFormItem>
 
       <NFormItem label="Port" path="Port">
-        <NInput v-model:value="formValue.Port" placeholder="8899"/>
+        <NInput v-model:value="formValue.Port" placeholder="22321"/>
         <NTooltip trigger="hover">
           <template #trigger>
             <NIcon size="18" class="ml-1 text-gray-500">

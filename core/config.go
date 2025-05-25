@@ -2,10 +2,13 @@ package core
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 type MimeInfo struct {
@@ -158,6 +161,12 @@ func (c *Config) setConfig(config Config) {
 	c.Locale = config.Locale
 	c.Quality = config.Quality
 	c.SaveDirectory = config.SaveDirectory
+	if c.SaveDirectory == "" {
+		dir, err := homedir.Dir()
+		if err == nil {
+			c.SaveDirectory = filepath.Join(dir, "Downloads")
+		}
+	}
 	c.FilenameLen = config.FilenameLen
 	c.FilenameTime = config.FilenameTime
 	c.UpstreamProxy = config.UpstreamProxy

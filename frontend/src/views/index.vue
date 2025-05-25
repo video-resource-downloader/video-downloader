@@ -55,7 +55,6 @@ import type {DataTableRowKey, ImageRenderToolbarProps} from "naive-ui"
 import Preview from "@/components/Preview.vue"
 import ShowLoading from "@/components/ShowLoading.vue"
 // @ts-ignore
-import {getDecryptionArray} from '@/assets/js/decrypt.js'
 import {useIndexStore} from "@/stores"
 import appApi from "@/api/app"
 import ResAction from "@/components/ResAction.vue"
@@ -429,15 +428,6 @@ const batchImport = () => {
 
 }
 
-const uint8ArrayToBase64 = (bytes: any) => {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
-}
-
 async function checkVariable() {
   return new Promise((resolve) => {
     const interval = setInterval(() => {
@@ -460,7 +450,6 @@ const download = (row: appType.MediaInfo, index: number) => {
   if (row.DecodeKey) {
     appApi.download({
       ...row,
-      decodeStr: uint8ArrayToBase64(getDecryptionArray(row.DecodeKey))
     }).then((res: appType.Res) => {
       if (res.code === 0) {
         loading.value = false
@@ -514,7 +503,6 @@ const decodeWxFile = (row: appType.MediaInfo, index: number) => {
       appApi.wxFileDecode({
         ...row,
         filename: res.data.file,
-        decodeStr: uint8ArrayToBase64(getDecryptionArray(row.DecodeKey))
       }).then((res: appType.Res) => {
         loading.value = false
         if (res.code === 0) {

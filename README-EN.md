@@ -79,7 +79,7 @@ Clean UI, easy to use, and supports a wide range of resource sniffing and downlo
 
 - Check your system proxy settings:  
   Address: 127.0.0.1  
-  Port: 8899
+  Port: 22321
 
 ### 🌐 Can't Access Internet After Closing the App?
 

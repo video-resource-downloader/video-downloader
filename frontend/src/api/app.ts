@@ -48,19 +48,19 @@ export default {
     isProxy() {
         return request({
             url: 'api/is-proxy',
-            method: 'post'
+            method: 'get'
         })
     },
     appInfo() {
         return request({
             url: 'api/app-info',
-            method: 'post',
+            method: 'get',
         })
     },
     getConfig() {
         return request({
             url: 'api/get-config',
-            method: 'post',
+            method: 'get',
         })
     },
     setConfig(data: object) {
@@ -82,7 +82,7 @@ export default {
     clear() {
         return request({
             url: 'api/clear',
-            method: 'post'
+            method: 'delete'
         })
     },
     delete(data: object) {
@@ -102,6 +102,13 @@ export default {
     wxFileDecode(data: object) {
         return request({
             url: 'api/wx-file-decode',
+            method: 'post',
+            data: data
+        })
+    },
+    wxDecodeKeys(data: object) {
+        return request({
+            url: 'api/wx-decode-keys',
             method: 'post',
             data: data
         })

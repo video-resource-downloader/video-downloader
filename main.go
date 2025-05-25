@@ -29,7 +29,7 @@ var wailsJson string
 
 func main() {
 	// Create an instance of the app structure
-	app := core.GetApp(assets, wailsJson)
+	app := core.NewApp(assets, wailsJson)
 	bind := core.NewBind()
 	isMac := runtime.GOOS == "darwin"
 	// menu

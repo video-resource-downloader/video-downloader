@@ -39,7 +39,7 @@ var (
 	httpServerOnce *HttpServer
 )
 
-func GetApp(assets embed.FS, wjs string) *App {
+func NewApp(assets embed.FS, wjs string) *App {
 	if appOnce == nil {
 		matches := regexp.MustCompile(`"productVersion":\s*"([\d.]+)"`).FindStringSubmatch(wjs)
 		version := "1.0.1"
@@ -129,7 +129,7 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 func (a *App) OnExit() {
-	a.UnsetSystemProxy()
+	_ = a.UnsetSystemProxy()
 	globalLogger.Close()
 }
 

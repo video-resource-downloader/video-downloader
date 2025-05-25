@@ -18,7 +18,7 @@ export const useIndexStore = defineStore("index-store", () => {
         Theme: "lightTheme",
         Locale: "zh",
         Host: "0.0.0.0",
-        Port: "8899",
+        Port: "22321",
         Quality: 0,
         SaveDirectory: "",
         UpstreamProxy: "",

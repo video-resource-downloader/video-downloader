@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/video-resource-downloader/video-downloader/core/internal"
 	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
@@ -90,7 +90,7 @@ func (r *Resource) delete(sign string) {
 	r.mediaMark.Delete(sign)
 }
 
-func (r *Resource) download(mediaInfo MediaInfo, decodeStr string) {
+func (r *Resource) download(mediaInfo MediaInfo) {
 	if globalConfig.SaveDirectory == "" {
 		return
 	}
@@ -149,9 +149,10 @@ func (r *Resource) download(mediaInfo MediaInfo, decodeStr string) {
 			r.progressEventsEmit(mediaInfo, err.Error())
 			return
 		}
-		if decodeStr != "" {
+		if mediaInfo.DecodeKey != "" {
 			r.progressEventsEmit(mediaInfo, "decrypting in progress", shared.DownloadStatusRunning)
-			if err := r.decodeWxFile(mediaInfo.SavePath, decodeStr); err != nil {
+			decodedBytes := internal.GetDecryptorBytes(mediaInfo.DecodeKey)
+			if err := r.decodeWxFile(mediaInfo.SavePath, decodedBytes); err != nil {
 				r.progressEventsEmit(mediaInfo, "decryption error: "+err.Error())
 				return
 			}
@@ -179,25 +180,30 @@ func (r *Resource) parseHeaders(mediaInfo MediaInfo) (map[string]string, error) 
 	return headers, nil
 }
 
-func (r *Resource) wxFileDecode(mediaInfo MediaInfo, fileName, decodeStr string) (string, error) {
+func (r *Resource) wxFileDecode(mediaInfo MediaInfo, fileName string) (string, error) {
 	sourceFile, err := os.Open(fileName)
 	if err != nil {
 		return "", err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		_ = sourceFile.Close()
+	}()
 	mediaInfo.SavePath = strings.ReplaceAll(fileName, ".mp4", "_decrypt.mp4")
 
 	destinationFile, err := os.Create(mediaInfo.SavePath)
 	if err != nil {
 		return "", err
 	}
-	defer destinationFile.Close()
+	defer func() {
+		_ = destinationFile.Close()
+	}()
 
 	_, err = io.Copy(destinationFile, sourceFile)
 	if err != nil {
 		return "", err
 	}
-	err = r.decodeWxFile(mediaInfo.SavePath, decodeStr)
+	decodedBytes := internal.GetDecryptorBytes(mediaInfo.DecodeKey)
+	err = r.decodeWxFile(mediaInfo.SavePath, decodedBytes)
 	if err != nil {
 		return "", err
 	}
@@ -224,16 +230,14 @@ func (r *Resource) progressEventsEmit(mediaInfo MediaInfo, args ...string) {
 	return
 }
 
-func (r *Resource) decodeWxFile(fileName, decodeStr string) error {
-	decodedBytes, err := base64.StdEncoding.DecodeString(decodeStr)
-	if err != nil {
-		return err
-	}
+func (r *Resource) decodeWxFile(fileName string, decodedBytes []byte) error {
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	byteCount := len(decodedBytes)
 	fileBytes := make([]byte, byteCount)

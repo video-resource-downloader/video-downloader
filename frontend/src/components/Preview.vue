@@ -27,8 +27,8 @@ import "video.js/dist/video-js.css"
 import videojs from "video.js"
 import flvjs from "flv.js"
 import axios from "axios"
-// @ts-ignore
-import { getDecryptionArray } from '@/assets/js/decrypt.js'
+import { base64ToUint8Array } from "@/utils/base64"
+import appApi from "@/api/app"
 import type Player from "video.js/dist/types/player"
 import {useI18n} from 'vue-i18n'
 
@@ -120,15 +120,17 @@ const playVideoWithoutTotalLength = () => {
   isOver = false
   startByte = 0
   endByte = startByte + chunkSize - 1
-  decodeArr = getDecryptionArray(props.previewRow.DecodeKey)
-  sourceBuffer = null
-  mediaSource.addEventListener("sourceopen", () => {
-    sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')
-    downloadChunk()
-  })
+  appApi.wxDecodeKeys(props.previewRow).then((res) => {
+    decodeArr = base64ToUint8Array(res.data.decryptorBase64)
+    sourceBuffer = null
+    mediaSource.addEventListener("sourceopen", () => {
+      sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')
+      downloadChunk()
+    })
 
-  videoPlayer.value.addEventListener("seeking", handleSeeking)
-  videoPlayer.value.addEventListener("timeupdate", handleTimeupdate)
+    videoPlayer.value.addEventListener("seeking", handleSeeking)
+    videoPlayer.value.addEventListener("timeupdate", handleTimeupdate)
+  })
 }
 
 const buildUrlWithParams = (url: string) => {
