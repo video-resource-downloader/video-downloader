@@ -170,34 +170,34 @@ const downloadChunk = () => {
   isLoading = true
   try {
     axios.get(rowUrl, { headers: { Range: `bytes=${startByte}-${endByte}` }, responseType: "arraybuffer" })
-        .then(response => {
-          let chunk = new Uint8Array(response.data)
+      .then(response => {
+        let chunk = new Uint8Array(response.data)
 
-          // 解密前 13702 字节
-          for (let i = 0; i < chunk.byteLength && startByte + i < decodeArr.length; i++) {
-            chunk[i] ^= decodeArr[startByte + i]
-          }
+        // 解密前 137102 字节
+        for (let i = 0; i < chunk.byteLength && startByte + i < decodeArr.length; i++) {
+          chunk[i] ^= decodeArr[startByte + i]
+        }
 
-          // 更新字节范围，准备请求下一个分片
-          startByte = endByte + 1
-          endByte = startByte + chunkSize - 1
+        // 更新字节范围，准备请求下一个分片
+        startByte = endByte + 1
+        endByte = startByte + chunkSize - 1
 
-          if (sourceBuffer && !sourceBuffer.updating) {
-            sourceBuffer.appendBuffer(chunk);
-          } else {
-            console.error("SourceBuffer is updating, cannot append buffer right now.");
-          }
-          isLoading = false
-          if (response.data.byteLength === 0) {
-            isOver = true
-            mediaSource?.endOfStream()
-          }
-        })
-        .catch(() => {
-          isLoading = false
+        if (sourceBuffer && !sourceBuffer.updating) {
+          sourceBuffer.appendBuffer(chunk);
+        } else {
+          console.error("SourceBuffer is updating, cannot append buffer right now.");
+        }
+        isLoading = false
+        if (response.data.byteLength === 0) {
           isOver = true
-        })
-  }catch (e) {
+          mediaSource?.endOfStream()
+        }
+      })
+      .catch(() => {
+        isLoading = false
+        isOver = true
+      })
+  } catch (e) {
     isLoading = false
     isOver = true
   }

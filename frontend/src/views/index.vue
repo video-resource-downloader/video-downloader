@@ -74,7 +74,7 @@ const store = useIndexStore()
 const tableHeight = computed(() => {
   return store.globalConfig.Locale === "zh" ? store.tableHeight - 130 : store.tableHeight - 151
 })
-const resourcesType = ref<string[]>(["all"])
+const resourcesType = ref<string[]>(["video"])
 
 const classifyAlias: { [key: string]: any } = {
   image: computed(() => t("index.image")),
@@ -112,10 +112,12 @@ const columns = ref<any[]>([
   {
     title: computed(() => t("index.domain")),
     key: "Domain",
+    width: 120,
   },
   {
     title: computed(() => t("index.type")),
     key: "Classify",
+    width: 80,
     filterOptions: computed(() => Array.from(classify.value).slice(1)),
     filterMultiple: true,
     filter: (value: string, row: appType.MediaInfo) => {
@@ -176,6 +178,7 @@ const columns = ref<any[]>([
   {
     title: computed(() => t("index.status")),
     key: "Status",
+    width: 100,
     render: (row: appType.MediaInfo) => {
       return dwStatus[row.Status as keyof typeof dwStatus]
     }
@@ -183,10 +186,10 @@ const columns = ref<any[]>([
   {
     title: computed(() => t("index.description")),
     key: "Description",
-    width: 150,
+    // width: 150,
     render: (row: appType.MediaInfo, index: number) => {
       return h(NTooltip, {trigger: 'hover', placement: 'top'}, {
-        trigger: () => h("div", {}, row.Description.length > 16 ? row.Description.substring(0, 16) + "..." : row.Description),
+        trigger: () => h("div", {}, row.Description.length > 24 ? row.Description.substring(0, 20) + "..." : row.Description),
         default: () => h("div", {
           style: {
             "max-width": " 400px",
@@ -199,11 +202,13 @@ const columns = ref<any[]>([
   },
   {
     title: computed(() => t("index.resource_size")),
-    key: "Size"
+    key: "Size",
+    width: 120,
   },
   {
     title: computed(() => t("index.operation")),
     key: "actions",
+    width: 180,
     render(row: appType.MediaInfo, index: number) {
       return h(ResAction, {key: index, row: row, index: index, onAction: dataAction})
     }
@@ -319,7 +324,8 @@ const dataAction = (row: appType.MediaInfo, index: number, type: string) => {
       })
       break
     case "json":
-      ClipboardSetText(encodeURIComponent(JSON.stringify(row))).then((is: boolean) => {
+      // ClipboardSetText(encodeURIComponent(JSON.stringify(row))).then((is: boolean) => {
+      ClipboardSetText(JSON.stringify(row, null, 4)).then((is: boolean) => {
         if (is) {
           window?.$message?.success(t("common.copy_success"))
         } else {
