@@ -90,11 +90,11 @@ const classifyAlias: { [key: string]: any } = {
 
 const dwStatus = computed<any>(() => {
   return {
-    ready: t("common.ready"),
-    running: t("common.running"),
-    error: t("common.error"),
-    done: t("common.done"),
-    handle: t("common.handle")
+    ready: t("index.ready"),
+    running: t("index.running"),
+    error: t("index.error"),
+    done: t("index.done"),
+    handle: t("index.handle")
   }
 })
 
@@ -200,26 +200,6 @@ const columns = ref<any[]>([
   {
     title: computed(() => t("index.resource_size")),
     key: "Size"
-  },
-  {
-    title: computed(() => t("index.save_path")),
-    key: "SavePath",
-    render(row: appType.MediaInfo, index: number) {
-      return h("a",
-          {
-            href: "javascript:;",
-            style: {
-              color: "#5a95d0"
-            },
-            onClick: () => {
-              if (row.SavePath && row.Status === "done") {
-                appApi.openFolder({filePath: row.SavePath})
-              }
-            }
-          },
-          row.SavePath
-      )
-    }
   },
   {
     title: computed(() => t("index.operation")),
@@ -352,6 +332,11 @@ const dataAction = (row: appType.MediaInfo, index: number, type: string) => {
       break;
     case "decode":
       decodeWxFile(row, index)
+      break;
+    case "folder":
+      if (row.SavePath && row.Status === "done") {
+        appApi.openFolder({filePath: row.SavePath})
+      }
       break;
     case "delete":
       appApi.delete({sign: row.UrlSign}).then(() => {
