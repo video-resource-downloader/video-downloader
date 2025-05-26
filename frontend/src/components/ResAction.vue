@@ -1,8 +1,9 @@
 <template>
   <NSpace style="--wails-draggable:no-drag" :size="2">
-    <NButton v-if="(row.Classify != 'live' && row.Classify != 'm3u8') && row.Status !== 'done'" type="success" :tertiary="true" size="tiny" @click="action('down')">
+    <NButton v-if="row.Classify != 'live' && row.Classify != 'm3u8'" type="success" :tertiary="true" size="tiny" @click="action('down')">
       <template #icon>
-        <DownloadOutlined style="font-size: 14px" />
+        <DownloadOutlined v-if="row.Status !== 'done'" style="font-size: 14px" />
+        <ReloadOutlined v-else style="font-size: 14px" />
       </template>
       <span class="action-tooltip">{{ t("index.direct_download") }}</span>
     </NButton>
@@ -49,6 +50,7 @@
 import {useI18n} from 'vue-i18n'
 import {
   DownloadOutlined,
+  ReloadOutlined,
   LinkOutlined,
   GlobalOutlined,
   UnlockOutlined,

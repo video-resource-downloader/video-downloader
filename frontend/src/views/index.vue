@@ -226,7 +226,7 @@ const columns = ref<any[]>([
   {
     title: computed(() => t("index.operation")),
     key: "actions",
-    width: 180,
+    width: 190,
     render(row: appType.MediaInfo, index: number) {
       return h(ResAction, {key: index, row: row, index: index, onAction: dataAction})
     }
@@ -419,7 +419,8 @@ const batchImport = () => {
   loading.value = true
   let jsonData = []
   for (let i = 0; i < data.value.length; i++) {
-    jsonData.push(encodeURIComponent(JSON.stringify(data.value[i])))
+    // jsonData.push(encodeURIComponent(JSON.stringify(data.value[i])))
+    jsonData.push(JSON.stringify(data.value[i]))
   }
   appApi.batchImport({content: jsonData.join("\n")}).then((res: appType.Res) => {
     loading.value = false
@@ -518,12 +519,13 @@ const decodeWxFile = (row: appType.MediaInfo, index: number) => {
 
 const handleImport = (content: string) => {
   if (!content) {
-    // window?.$message?.error(t("view_index.import_empty"))
+    window?.$message?.error(t("view_index.import_empty"))
     return
   }
   content.split("\n").forEach((line, index) => {
     try {
-      let res = JSON.parse(decodeURIComponent(line))
+      // let res = JSON.parse(decodeURIComponent(line))
+      let res = JSON.parse(line)
       if (res && res?.Id) {
         res.Id = res.Id + Math.floor(Math.random() * 100000)
         res.SavePath = ""
