@@ -64,7 +64,7 @@ func (h *HttpServer) initRouter() {
 	apiGroup := h.Group("api")
 	apiGroup.POST("install", h.install)
 	apiGroup.POST("set-system-password", h.setSystemPassword)
-	apiGroup.POST("preview", h.preview)
+	apiGroup.GET("preview", h.preview)
 	apiGroup.POST("proxy-open", h.openSystemProxy)
 	apiGroup.POST("proxy-unset", h.unsetSystemProxy)
 	apiGroup.POST("open-directory", h.openDirectoryDialog)
@@ -111,6 +111,22 @@ func (h *HttpServer) downCert(c *gin.Context) {
 }
 
 func (h *HttpServer) preview(c *gin.Context) {
+	savePath := c.Query("savePath")
+	if savePath != "" {
+		// 检查文件是否存在
+		if _, err := os.Stat(savePath); os.IsNotExist(err) {
+			http.Error(c.Writer, "File not found", http.StatusNotFound)
+			return
+		}
+		// 获取文件名
+		filename := filepath.Base(savePath)
+		// 设置响应头
+		c.Header("Content-Type", "video/mp4") // 可根据实际类型调整
+		c.Header("Content-Disposition", "inline; filename="+filename)
+		c.Header("Content-Transfer-Encoding", "binary")
+		c.File(savePath)
+		return
+	}
 	realURL := c.Query("url")
 	if realURL == "" {
 		http.Error(c.Writer, "Missing 'url' parameter", http.StatusBadRequest)

@@ -192,7 +192,13 @@ const columns = ref<any[]>([
         type: statusMap[status as keyof typeof statusMap].type,
         bordered: false,
         size: 'small'
-      }, { default: () => dwStatus.value[status] })
+      }, { default: () => {
+          if (status === "running") {
+            return row.Progress
+          }
+          return dwStatus.value[status]
+        } 
+      })
     }
   },
   {
@@ -261,26 +267,24 @@ onMounted(() => {
   eventStore.addHandle({
     type: "downloadProgress",
     event: (res: { Id: string, SavePath: string, Status: string, Message: string }) => {
+      let item = null
+      if (data.value[downIndex.value]?.Id === res.Id) {
+        item = data.value[downIndex.value]
+      } else {
+        item = data.value.find(item => item.Id === res.Id)
+      }
+      if (item) {
+        item.SavePath = res.SavePath
+        item.Progress = res.Message
+        item.Status = res.Status
+        localStorage.setItem("resources-data", JSON.stringify(data.value))
+      }
       switch (res.Status) {
         case "running":
-          loading.value = true
-          loadingText.value = res.Message
+          loading.value = false
           break;
         case "done":
           loading.value = false
-          if (data.value[downIndex.value]?.Id === res.Id) {
-            data.value[downIndex.value].SavePath = res.SavePath
-            data.value[downIndex.value].Status = "done"
-          } else {
-            for (const i in data.value) {
-              if (data.value[i].Id === res.Id) {
-                data.value[i].SavePath = res.SavePath
-                data.value[i].Status = "done"
-                break
-              }
-            }
-          }
-          localStorage.setItem("resources-data", JSON.stringify(data.value))
           window?.$message?.success(t("index.download_success"))
           break;
         case "error":
@@ -450,23 +454,14 @@ const download = (row: appType.MediaInfo, index: number) => {
   loadingText.value = "ready"
   loading.value = true
   downIndex.value = index
-  if (row.DecodeKey) {
-    appApi.download({
-      ...row,
-    }).then((res: appType.Res) => {
-      if (res.code === 0) {
-        loading.value = false
-        window?.$message?.error(res.message)
-      }
-    })
-  } else {
-    appApi.download({...row, decodeStr: ""}).then((res: appType.Res) => {
-      if (res.code === 0) {
-        loading.value = false
-        window?.$message?.error(res.message)
-      }
-    })
-  }
+  appApi.download({
+    ...row,
+  }).then((res: appType.Res) => {
+    if (res.code === 0) {
+      loading.value = false
+      window?.$message?.error(res.message)
+    }
+  })
 }
 
 const open = () => {

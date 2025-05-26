@@ -31,6 +31,7 @@ import { base64ToUint8Array } from "@/utils/base64"
 import appApi from "@/api/app"
 import type Player from "video.js/dist/types/player"
 import {useI18n} from 'vue-i18n'
+import {useIndexStore} from "@/stores"
 
 const {t} = useI18n()
 const videoPlayer = ref<HTMLElement | any>(null)
@@ -55,7 +56,9 @@ const emits = defineEmits(["update:showModal"])
 const changeShow = (value: boolean) => emits("update:showModal", value)
 
 const onAfterEnter = () => {
-  if (props.previewRow.DecodeKey) {
+  if (props.previewRow.Status === "done") {
+    setupVideoJsPlayer()
+  } else if (props.previewRow.DecodeKey) {
     playVideoWithoutTotalLength()
   } else if (props.previewRow.Classify === "live") {
     playFlvStream()
@@ -93,6 +96,8 @@ const playFlvStream = () => {
   }
 }
 
+const store = useIndexStore()
+
 const setupVideoJsPlayer = () => {
   if (!videoPlayer.value) return
 
@@ -103,9 +108,12 @@ const setupVideoJsPlayer = () => {
       preload: "auto",
     })
   }
-
+  let src = props.previewRow.Url
+  if (props.previewRow.Status === "done") {
+    src = `${store.baseUrl}/api/preview?savePath=${encodeURI(props.previewRow.SavePath)}`
+  }
   player.src({
-    src: props.previewRow.Url,
+    src: src,
     type: props.previewRow.ContentType,
     withCredentials: true,
   })

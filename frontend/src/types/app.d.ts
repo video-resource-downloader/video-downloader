@@ -41,6 +41,7 @@ export namespace appType {
         Classify: string
         Suffix: string
         SavePath: string
+        Progress: string
         Status: string
         DecodeKey: string
         Description: string
