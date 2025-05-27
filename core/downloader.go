@@ -96,7 +96,8 @@ func (fd *FileDownloader) init() error {
 		fd.Referer = parsedURL.Scheme + "://" + parsedURL.Host + "/"
 	}
 
-	if fd.app.cfg.DownloadProxy && fd.app.cfg.UpstreamProxy != "" && !strings.Contains(fd.app.cfg.UpstreamProxy, fd.app.cfg.Port) {
+	if fd.app.cfg.DownloadProxy && fd.app.cfg.UpstreamProxy != "" &&
+		!strings.Contains(fd.app.cfg.UpstreamProxy, fd.app.cfg.Port) {
 		proxyURL, err := url.Parse(fd.app.cfg.UpstreamProxy)
 		if err != nil {
 			return fmt.Errorf("parse proxy URL failed: %w", err)
@@ -151,8 +152,8 @@ func (fd *FileDownloader) init() error {
 	if err != nil {
 		return fmt.Errorf("file open failed: %w", err)
 	}
-	defer fd.File.Close()
 	if err = fd.File.Truncate(fd.TotalSize); err != nil {
+		fd.File.Close()
 		return fmt.Errorf("file truncate failed: %w", err)
 	}
 	return nil
@@ -211,7 +212,6 @@ func (fd *FileDownloader) startDownload() error {
 		for progress := range progressChan {
 			taskProgress[progress.taskID] += progress.bytes
 			totalDownloaded += progress.bytes
-
 			if fd.progressCallback != nil {
 				taskPercentage := float64(0)
 				if task := fd.DownloadTaskList[progress.taskID]; task != nil {
@@ -355,13 +355,11 @@ func (fd *FileDownloader) Start() error {
 	if err := fd.init(); err != nil {
 		return err
 	}
-	fd.createDownloadTasks()
-
-	err := fd.startDownload()
-
 	if fd.File != nil {
-		fd.File.Close()
+		defer func() {
+			_ = fd.File.Close()
+		}()
 	}
-
-	return err
+	fd.createDownloadTasks()
+	return fd.startDownload()
 }

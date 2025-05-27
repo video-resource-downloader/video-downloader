@@ -141,20 +141,19 @@ func (r *Resource) download(mediaInfo MediaInfo) {
 		}
 
 		headers, _ := r.parseHeaders(mediaInfo)
-
 		downloader := NewFileDownloader(r.app, rawUrl, mediaInfo.SavePath, r.app.cfg.TaskNumber, headers)
 		downloader.progressCallback = func(totalDownloaded, totalSize float64, taskID int, taskProgress float64) {
 			r.progressEventsEmit(mediaInfo, strconv.Itoa(int(totalDownloaded*100/totalSize))+"%", shared.DownloadStatusRunning)
 		}
-		err := downloader.Start()
-		if err != nil {
+
+		if err := downloader.Start(); err != nil {
 			r.progressEventsEmit(mediaInfo, err.Error())
 			return
 		}
 		if mediaInfo.DecodeKey != "" {
 			r.progressEventsEmit(mediaInfo, "decrypting in progress", shared.DownloadStatusRunning)
 			decodedBytes := internal.GetDecryptorBytes(mediaInfo.DecodeKey)
-			if err = r.decodeWxFile(mediaInfo.SavePath, decodedBytes); err != nil {
+			if err := r.decodeWxFile(mediaInfo.SavePath, decodedBytes); err != nil {
 				r.progressEventsEmit(mediaInfo, "decryption error: "+err.Error())
 				return
 			}
