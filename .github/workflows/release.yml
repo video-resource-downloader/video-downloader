@@ -1,0 +1,203 @@
+name: Build and Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+      
+      - name: Set wails.json version from release tag
+        run: |
+          TAG_NAME=${{ github.ref_name }}
+          TAG_NAME=${TAG_NAME#v}
+          jq --arg v "$TAG_NAME" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build Mac universal app
+        run: wails build -platform "darwin/universal"
+
+      - name: Create DMG for universal
+        run: |
+          VERSION=$(jq -r '.info.productVersion' wails.json)
+          rm -f "build/bin/video-downloader_${VERSION}_mac.dmg"
+          create-dmg "build/bin/video-downloader_${VERSION}_mac.dmg" "build/bin/video-downloader.app"
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/bin/video-downloader_*_mac.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set wails.json version from release tag
+        shell: pwsh
+        run: |
+          $TAG_NAME = "${{ github.ref_name }}"
+          # 去掉前面的 v
+          $TAG_NAME = $TAG_NAME -replace '^v', ''
+          # 如果只有三段，补 .0
+          # if (($TAG_NAME -split '\.').Count -eq 3) { $TAG_NAME = "$TAG_NAME.0" }
+          $json = Get-Content wails.json | ConvertFrom-Json
+          $json.info.productVersion = $TAG_NAME
+          $json | ConvertTo-Json -Depth 10 | Set-Content wails.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install jq
+        run: choco install jq
+        shell: powershell
+
+      - name: Install NSIS
+        run: choco install nsis
+        shell: powershell
+
+      - name: Build and Rename Windows amd64
+        shell: bash
+        run: |
+          wails build -f -nsis -platform "windows/amd64" -webview2 Embed -skipbindings
+          mv -f "build/bin/video-downloader-amd64-installer.exe" "build/bin/video-downloader_$(jq -r '.info.productVersion' wails.json)_win_amd64.exe"
+
+      - name: Build and Rename Windows arm64
+        shell: bash
+        run: |
+          wails build -f -nsis -platform "windows/arm64" -webview2 Embed -skipbindings
+          mv -f "build/bin/video-downloader-arm64-installer.exe" "build/bin/video-downloader_$(jq -r '.info.productVersion' wails.json)_win_arm64.exe"
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/bin/video-downloader_*_win_amd64.exe
+            build/bin/video-downloader_*_win_arm64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set wails.json version from release tag
+        run: |
+          TAG_NAME=${{ github.ref_name }}
+          TAG_NAME=${TAG_NAME#v}
+          jq --arg v "$TAG_NAME" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      # x86_64 构建
+      - name: Build and Package Linux amd64 (docker)
+        run: |
+          docker build --network host -f build/linux/dockerfile -t video-downloader-amd-linux .
+          docker run --rm --name video-downloader-amd-build --network host --privileged -v $PWD:/www/video-downloader video-downloader-amd-linux bash -c '
+            set -e
+            cd /www/video-downloader
+            wails build -platform "linux/amd64" -s -skipbindings
+            cp build/bin/video-downloader build/linux/Debian/usr/local/bin/
+            VERSION=$(jq -r ".info.productVersion" wails.json)
+            echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
+            dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_amd64.deb
+            cp build/bin/video-downloader build/linux/AppImage/usr/bin/
+            pushd build/linux/AppImage
+            for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
+                path=$(find /usr/lib* -name "$f" 2>/dev/null | head -n 1)
+                if [ -n "$path" ]; then
+                    mkdir -p ./$(dirname "$path")
+                    cp --parents "$path" .
+                else
+                    echo "⚠️ $f not found, you may need to install libwebkit2gtk"
+                fi
+            done
+            popd
+            wget -O ./build/bin/appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+            chmod +x ./build/bin/appimagetool-x86_64.AppImage
+            ./build/bin/appimagetool-x86_64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_amd64.AppImage
+            mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_amd64
+          '
+
+      # arm64 构建
+      - name: Build and Package Linux arm64 (docker)
+        run: |
+          docker build --platform linux/arm64 --network host -f build/linux/dockerfile -t video-downloader-arm-linux .
+          docker run --rm --platform linux/arm64 --name video-downloader-arm-build --network host --privileged -v $PWD:/www/video-downloader video-downloader-arm-linux bash -c '
+            set -e
+            cd /www/video-downloader
+            wails build -platform "linux/arm64" -s -skipbindings
+            cp build/bin/video-downloader build/linux/Debian/usr/local/bin/
+            VERSION=$(jq -r ".info.productVersion" wails.json)
+            echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
+            dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_arm64.deb
+            cp build/bin/video-downloader build/linux/AppImage/usr/bin/
+            pushd build/linux/AppImage
+            for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
+                path=$(find /usr/lib* -name "$f" 2>/dev/null | head -n 1)
+                if [ -n "$path" ]; then
+                    mkdir -p ./$(dirname "$path")
+                    cp --parents "$path" .
+                else
+                    echo "⚠️ $f not found, you may need to install libwebkit2gtk"
+                fi
+            done
+            popd
+            wget -O ./build/bin/appimagetool-aarch64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-aarch64.AppImage
+            chmod +x ./build/bin/appimagetool-aarch64.AppImage
+            ./build/bin/appimagetool-aarch64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_arm64.AppImage
+            mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_arm64
+          '
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/bin/video-downloader_*_linux_amd64
+            build/bin/video-downloader_*_linux_arm64
+            build/bin/video-downloader_*_linux_amd64.deb
+            build/bin/video-downloader_*_linux_arm64.deb
+            build/bin/video-downloader_*_linux_amd64.AppImage
+            build/bin/video-downloader_*_linux_arm64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
