@@ -15,7 +15,7 @@ func DialogErr(ctx context.Context, message string) {
 	})
 }
 
-func buildResp(code int, message string, data interface{}) *ResponseData {
+func buildResp(code int, message string, data any) *ResponseData {
 	return &ResponseData{
 		Code:    code,
 		Message: message,

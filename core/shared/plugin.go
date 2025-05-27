@@ -12,8 +12,8 @@ type Bridge struct {
 	TypeSuffix    func(mime string) (string, string)
 	MediaIsMarked func(key string) bool
 	MarkMedia     func(key string)
-	GetConfig     func(key string) interface{}
-	Send          func(t string, data interface{})
+	GetConfig     func(key string) any
+	Send          func(t string, data any)
 }
 
 type Plugin interface {

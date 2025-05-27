@@ -5,6 +5,7 @@ go 1.22.2
 toolchain go1.23.4
 
 require (
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/elazarl/goproxy v0.0.0-20241223171911-d5978cb8c956
 	github.com/gin-gonic/gin v1.10.1
 	github.com/lbbniu/isaac v1.0.1

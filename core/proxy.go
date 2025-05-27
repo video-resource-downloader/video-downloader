@@ -65,10 +65,10 @@ func newProxy(app *App, httpServer *HttpServer, resource *Resource) *Proxy {
 		MarkMedia: func(key string) {
 			resource.markMedia(key)
 		},
-		GetConfig: func(key string) interface{} {
+		GetConfig: func(key string) any {
 			return app.cfg.getConfig(key)
 		},
-		Send: func(t string, data interface{}) {
+		Send: func(t string, data any) {
 			httpServer.send(t, data)
 		},
 	}

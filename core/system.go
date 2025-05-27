@@ -1,10 +1,11 @@
 package core
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type SystemSetup struct {
@@ -31,29 +32,29 @@ func (s *SystemSetup) initCert() ([]byte, error) {
 	if err == nil {
 		return content, nil
 	}
-	if os.IsNotExist(err) {
-		err = os.WriteFile(s.CertFile, s.app.PublicCrt, 0750)
-		if err != nil {
-			return nil, err
-		}
-		return s.app.PublicCrt, nil
-	} else {
+	if !os.IsNotExist(err) {
 		return nil, err
 	}
+	err = os.WriteFile(s.CertFile, s.app.PublicCrt, 0750)
+	if err != nil {
+		return nil, err
+	}
+	return s.app.PublicCrt, nil
 }
 
 func (s *SystemSetup) SetPassword(password string, isCache bool) {
 	s.Password = password
-	if isCache {
-		encrypted, err := s.aesCipher.Encrypt(password)
-		if err == nil {
-			err1 := os.WriteFile(s.CacheFile, []byte(encrypted), 0750)
-			if err1 != nil {
-				fmt.Println("Failed to write password: ", err1.Error())
-			}
-		} else {
-			fmt.Println("Failed to Encrypt password: ", err.Error())
-		}
+	if !isCache {
+		return
+	}
+	encrypted, err := s.aesCipher.Encrypt(password)
+	if err != nil {
+		runtime.LogErrorf(s.app.Context(), "Failed to Encrypt password: %v", err)
+		return
+	}
+	err = os.WriteFile(s.CacheFile, []byte(encrypted), 0750)
+	if err != nil {
+		runtime.LogErrorf(s.app.Context(), "Failed to write password: %v", err)
 	}
 }
 
@@ -66,7 +67,7 @@ func (s *SystemSetup) checkPasswordFile() {
 	lastModified := fileInfo.ModTime()
 	oneMonthAgo := time.Now().AddDate(0, -1, 0)
 	if lastModified.Before(oneMonthAgo) {
-		os.Remove(s.CacheFile)
+		_ = os.Remove(s.CacheFile)
 		return
 	}
 

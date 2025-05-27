@@ -58,6 +58,6 @@ func (l *Logger) Err(err error) {
 	l.Error().Stack().Err(err)
 }
 
-func (l *Logger) Esg(err error, format string, v ...interface{}) {
+func (l *Logger) Esg(err error, format string, v ...any) {
 	l.Error().Stack().Err(err).Msgf(fmt.Sprintf(format, v...))
 }

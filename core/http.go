@@ -23,12 +23,12 @@ import (
 	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
-type respData map[string]interface{}
+type respData map[string]any
 
 type ResponseData struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
 type HttpServer struct {
@@ -98,10 +98,10 @@ func (h *HttpServer) run() {
 		h.app.Logger.Err(err)
 		log.Fatalf("Service cannot start: %v", err)
 	}
-	fmt.Println("Service started, listening http://" + h.app.cfg.Host + ":" + h.app.cfg.Port)
+	runtime.LogInfo(h.app.Context(), "Service started, listening http://"+h.app.cfg.Host+":"+h.app.cfg.Port)
 	if err1 := http.Serve(listener, h); err1 != nil {
 		h.app.Logger.Err(err1)
-		fmt.Printf("Service startup exception: %v", err1)
+		runtime.LogInfof(h.app.Context(), "Service startup exception: %v", err1)
 	}
 }
 
@@ -175,16 +175,16 @@ func (h *HttpServer) preview(c *gin.Context) {
 	return
 }
 
-func (h *HttpServer) send(t string, data interface{}) {
-	jsonData, err := json.Marshal(map[string]interface{}{
+func (h *HttpServer) send(t string, data any) {
+	jsonData, err := json.Marshal(map[string]any{
 		"type": t,
 		"data": data,
 	})
 	if err != nil {
-		fmt.Println("Error converting map to JSON:", err)
+		runtime.LogErrorf(h.app.Context(), "Error converting map to JSON: %v", err)
 		return
 	}
-	runtime.EventsEmit(h.app.ctx, "event", string(jsonData))
+	runtime.EventsEmit(h.app.Context(), "event", string(jsonData))
 }
 
 func (h *HttpServer) writeJson(w http.ResponseWriter, data *ResponseData) {
@@ -196,9 +196,9 @@ func (h *HttpServer) writeJson(w http.ResponseWriter, data *ResponseData) {
 	}
 }
 
-func (h *HttpServer) error(c *gin.Context, args ...interface{}) {
+func (h *HttpServer) error(c *gin.Context, args ...any) {
 	message := "ok"
-	var data interface{}
+	var data any
 
 	if len(args) > 0 {
 		message = args[0].(string)
@@ -209,9 +209,9 @@ func (h *HttpServer) error(c *gin.Context, args ...interface{}) {
 	c.JSON(http.StatusOK, buildResp(0, message, data))
 }
 
-func (h *HttpServer) success(c *gin.Context, args ...interface{}) {
+func (h *HttpServer) success(c *gin.Context, args ...any) {
 	message := "ok"
-	var data interface{}
+	var data any
 
 	if len(args) > 0 {
 		data = args[0]
@@ -224,7 +224,7 @@ func (h *HttpServer) success(c *gin.Context, args ...interface{}) {
 }
 
 func (h *HttpServer) openDirectoryDialog(c *gin.Context) {
-	folder, err := runtime.OpenDirectoryDialog(h.app.ctx, runtime.OpenDialogOptions{
+	folder, err := runtime.OpenDirectoryDialog(h.app.Context(), runtime.OpenDialogOptions{
 		DefaultDirectory: "",
 		Title:            "Select a folder",
 	})
@@ -238,7 +238,7 @@ func (h *HttpServer) openDirectoryDialog(c *gin.Context) {
 }
 
 func (h *HttpServer) openFileDialog(c *gin.Context) {
-	filePath, err := runtime.OpenFileDialog(h.app.ctx, runtime.OpenDialogOptions{
+	filePath, err := runtime.OpenFileDialog(h.app.Context(), runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{
 				DisplayName: "Videos (*.mov;*.mp4)",

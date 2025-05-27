@@ -154,7 +154,7 @@ func (r *Resource) download(mediaInfo MediaInfo) {
 		if mediaInfo.DecodeKey != "" {
 			r.progressEventsEmit(mediaInfo, "decrypting in progress", shared.DownloadStatusRunning)
 			decodedBytes := internal.GetDecryptorBytes(mediaInfo.DecodeKey)
-			if err := r.decodeWxFile(mediaInfo.SavePath, decodedBytes); err != nil {
+			if err = r.decodeWxFile(mediaInfo.SavePath, decodedBytes); err != nil {
 				r.progressEventsEmit(mediaInfo, "decryption error: "+err.Error())
 				return
 			}
@@ -223,7 +223,7 @@ func (r *Resource) progressEventsEmit(mediaInfo MediaInfo, args ...string) {
 		Status = args[1]
 	}
 
-	r.httpServer.send("downloadProgress", map[string]interface{}{
+	r.httpServer.send("downloadProgress", map[string]any{
 		"Id":       mediaInfo.Id,
 		"Status":   Status,
 		"SavePath": mediaInfo.SavePath,

@@ -175,7 +175,7 @@ func (c *Config) setConfig(config *Config) {
 	}
 }
 
-func (c *Config) getConfig(key string) interface{} {
+func (c *Config) getConfig(key string) any {
 	switch key {
 	case "Host":
 		return c.Host

@@ -134,17 +134,17 @@ func (p *QqPlugin) handleWechatRequest(r *http.Request, ctx *goproxy.ProxyCtx) (
 }
 
 func (p *QqPlugin) handleMedia(body []byte) {
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return
 	}
 
-	mediaArr, ok := result["media"].([]interface{})
+	mediaArr, ok := result["media"].([]any)
 	if !ok || len(mediaArr) == 0 {
 		return
 	}
 
-	firstMedia, ok := mediaArr[0].(map[string]interface{})
+	firstMedia, ok := mediaArr[0].(map[string]any)
 	if !ok {
 		return
 	}
@@ -212,10 +212,10 @@ func (p *QqPlugin) handleMedia(body []byte) {
 		res.Description = desc
 	}
 
-	if spec, ok := firstMedia["spec"].([]interface{}); ok {
+	if spec, ok := firstMedia["spec"].([]any); ok {
 		var fileFormats []string
 		for _, item := range spec {
-			if m, ok := item.(map[string]interface{}); ok {
+			if m, ok := item.(map[string]any); ok {
 				if format, ok := m["fileFormat"].(string); ok {
 					fileFormats = append(fileFormats, format)
 				}

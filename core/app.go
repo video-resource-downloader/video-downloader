@@ -135,10 +135,10 @@ func (a *App) installCert() (string, error) {
 	if err != nil {
 		a.Logger.Esg(err, out)
 		return out, err
-	} else {
-		if err := a.lock(); err != nil {
-			a.Logger.Err(err)
-		}
+	}
+	if err = a.lock(); err != nil {
+		a.Logger.Err(err)
+		return out, err
 	}
 	return out, nil
 }
@@ -170,9 +170,5 @@ func (a *App) isInstall() bool {
 }
 
 func (a *App) lock() error {
-	err := os.WriteFile(a.LockFile, []byte("success"), 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.WriteFile(a.LockFile, []byte("success"), 0644)
 }

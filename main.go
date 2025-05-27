@@ -9,6 +9,7 @@ import (
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
@@ -66,8 +67,8 @@ func main() {
         \_/ |_|\__,_|\___|\___/      \__,_|\___/ \_/\_/ |_| |_|_|\___/ \__,_|\__,_|\___|_|`
 
 			log.Println(logo)
-			fmt.Println("version:", app.Version)
-			fmt.Println("lockfile:", app.LockFile)
+			wruntime.LogInfof(ctx, "version: %s", app.Version)
+			wruntime.LogInfof(ctx, "lockfile: %s", app.LockFile)
 			app.Startup(ctx)
 		},
 		OnShutdown: func(ctx context.Context) {

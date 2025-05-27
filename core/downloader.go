@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/avast/retry-go/v4"
 )
 
 const (
@@ -96,9 +98,10 @@ func (fd *FileDownloader) init() error {
 
 	if fd.app.cfg.DownloadProxy && fd.app.cfg.UpstreamProxy != "" && !strings.Contains(fd.app.cfg.UpstreamProxy, fd.app.cfg.Port) {
 		proxyURL, err := url.Parse(fd.app.cfg.UpstreamProxy)
-		if err == nil {
-			fd.ProxyUrl = proxyURL
+		if err != nil {
+			return fmt.Errorf("parse proxy URL failed: %w", err)
 		}
+		fd.ProxyUrl = proxyURL
 	}
 
 	request, err := http.NewRequest("HEAD", fd.Url, nil)
@@ -116,17 +119,16 @@ func (fd *FileDownloader) init() error {
 	fd.setHeaders(request)
 
 	var resp *http.Response
-	for retries := 0; retries < MaxRetries; retries++ {
+
+	retries := 0
+	resp, err = retry.DoWithData[*http.Response](func() (*http.Response, error) {
 		resp, err = fd.buildClient().Do(request)
-		if err == nil {
-			break
-		}
-		if retries < MaxRetries-1 {
-			time.Sleep(RetryDelay)
+		if err != nil {
+			retries++
 			fd.app.Logger.Warn().Msgf("HEAD request failed, retrying (%d/%d): %v", retries+1, MaxRetries, err)
 		}
-	}
-
+		return resp, err
+	}, retry.Attempts(MaxRetries), retry.Delay(RetryDelay))
 	if err != nil {
 		return fmt.Errorf("HEAD request failed after %d retries: %w", MaxRetries, err)
 	}
@@ -142,15 +144,15 @@ func (fd *FileDownloader) init() error {
 	}
 
 	dir := filepath.Dir(fd.FileName)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 		return fmt.Errorf("create directory failed: %w", err)
 	}
 	fd.File, err = os.OpenFile(fd.FileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("file open failed: %w", err)
 	}
-	if err := fd.File.Truncate(fd.TotalSize); err != nil {
-		fd.File.Close()
+	defer fd.File.Close()
+	if err = fd.File.Truncate(fd.TotalSize); err != nil {
 		return fmt.Errorf("file truncate failed: %w", err)
 	}
 	return nil
@@ -247,23 +249,20 @@ func (fd *FileDownloader) startDownload() error {
 
 func (fd *FileDownloader) startDownloadTask(wg *sync.WaitGroup, progressChan chan ProgressChan, errorChan chan error, task *DownloadTask) {
 	defer wg.Done()
-
-	for retries := 0; retries < MaxRetries; retries++ {
+	retries := 0
+	task.err = retry.Do(func() error {
 		err := fd.doDownloadTask(progressChan, task)
-		if err == nil {
-			task.isCompleted = true
-			return
+		if err != nil {
+			retries++
+			fd.app.Logger.Warn().Msgf("Task %d failed (attempt %d/%d): %v", task.taskID, retries+1, MaxRetries, err)
 		}
-
-		task.err = err
-		fd.app.Logger.Warn().Msgf("Task %d failed (attempt %d/%d): %v", task.taskID, retries+1, MaxRetries, err)
-
-		if retries < MaxRetries-1 {
-			time.Sleep(RetryDelay)
-		}
+		return err
+	}, retry.Attempts(MaxRetries), retry.Delay(RetryDelay))
+	if task.err != nil {
+		errorChan <- fmt.Errorf("task %d failed after %d attempts: %v", task.taskID, MaxRetries, task.err)
+		return
 	}
-
-	errorChan <- fmt.Errorf("task %d failed after %d attempts: %v", task.taskID, MaxRetries, task.err)
+	task.isCompleted = true
 }
 
 func (fd *FileDownloader) doDownloadTask(progressChan chan ProgressChan, task *DownloadTask) error {
