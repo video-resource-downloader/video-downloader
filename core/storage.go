@@ -12,9 +12,9 @@ type Storage struct {
 	def      []byte
 }
 
-func NewStorage(filename string, def []byte) *Storage {
+func NewStorage(app *App, filename string, def []byte) *Storage {
 	return &Storage{
-		fileName: path.Join(appOnce.UserDir, filename),
+		fileName: path.Join(app.UserDir, filename),
 		def:      def,
 	}
 }

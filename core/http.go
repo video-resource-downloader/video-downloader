@@ -33,21 +33,25 @@ type ResponseData struct {
 
 type HttpServer struct {
 	*gin.Engine
+	app      *App
+	resource *Resource
+	proxy    *Proxy
 }
 
-func initHttpServer() *HttpServer {
-	if httpServerOnce == nil {
-		httpServerOnce = &HttpServer{
-			Engine: gin.New(),
-		}
-		httpServerOnce.initRouter()
+func NewHttpServer(app *App) *HttpServer {
+	httpServer := &HttpServer{
+		Engine: gin.New(),
+		app:    app,
 	}
-	return httpServerOnce
+	httpServer.resource = newResource(app, httpServer)
+	httpServer.proxy = newProxy(app, httpServer, httpServer.resource)
+	httpServer.initRouter()
+	return httpServer
 }
 
 func (h *HttpServer) initRouter() {
 	// 注册CORS
-	host := fmt.Sprintf("%s:%s", globalConfig.Host, globalConfig.Port)
+	host := fmt.Sprintf("%s:%s", h.app.cfg.Host, h.app.cfg.Port)
 	h.Use(func(c *gin.Context) {
 		if c.Request.Host == host &&
 			strings.HasPrefix(c.Request.URL.Path, "/api") {
@@ -84,19 +88,19 @@ func (h *HttpServer) initRouter() {
 	apiGroup.GET("cert", h.downCert)
 	// 路由未匹配走代理请求
 	h.NoRoute(func(c *gin.Context) {
-		proxyOnce.Proxy.ServeHTTP(c.Writer, c.Request)
+		h.proxy.Proxy.ServeHTTP(c.Writer, c.Request)
 	})
 }
 
 func (h *HttpServer) run() {
-	listener, err := net.Listen("tcp", globalConfig.Host+":"+globalConfig.Port)
+	listener, err := net.Listen("tcp", h.app.cfg.Host+":"+h.app.cfg.Port)
 	if err != nil {
-		globalLogger.Err(err)
+		h.app.Logger.Err(err)
 		log.Fatalf("Service cannot start: %v", err)
 	}
-	fmt.Println("Service started, listening http://" + globalConfig.Host + ":" + globalConfig.Port)
+	fmt.Println("Service started, listening http://" + h.app.cfg.Host + ":" + h.app.cfg.Port)
 	if err1 := http.Serve(listener, h); err1 != nil {
-		globalLogger.Err(err1)
+		h.app.Logger.Err(err1)
 		fmt.Printf("Service startup exception: %v", err1)
 	}
 }
@@ -105,9 +109,9 @@ func (h *HttpServer) downCert(c *gin.Context) {
 	c.Header("Content-Type", "application/x-x509-ca-data")
 	c.Header("Content-Disposition", "attachment;filename=video-downloader-public.crt")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Length", fmt.Sprintf("%d", len(appOnce.PublicCrt)))
+	c.Header("Content-Length", fmt.Sprintf("%d", len(h.app.PublicCrt)))
 	c.Status(http.StatusOK)
-	_, _ = io.Copy(c.Writer, io.NopCloser(bytes.NewReader(appOnce.PublicCrt)))
+	_, _ = io.Copy(c.Writer, io.NopCloser(bytes.NewReader(h.app.PublicCrt)))
 }
 
 func (h *HttpServer) preview(c *gin.Context) {
@@ -115,7 +119,7 @@ func (h *HttpServer) preview(c *gin.Context) {
 	if savePath != "" {
 		// 检查文件是否存在
 		if _, err := os.Stat(savePath); os.IsNotExist(err) {
-			http.Error(c.Writer, "File not found", http.StatusNotFound)
+			c.String(http.StatusNotFound, "File not found")
 			return
 		}
 		// 获取文件名
@@ -129,18 +133,18 @@ func (h *HttpServer) preview(c *gin.Context) {
 	}
 	realURL := c.Query("url")
 	if realURL == "" {
-		http.Error(c.Writer, "Missing 'url' parameter", http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "Missing 'url' parameter")
 		return
 	}
 	realURL, _ = url.QueryUnescape(realURL)
 	parsedURL, err := url.Parse(realURL)
 	if err != nil {
-		http.Error(c.Writer, "Invalid URL", http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "Invalid URL")
 		return
 	}
 	request, err := http.NewRequest("GET", parsedURL.String(), nil)
 	if err != nil {
-		http.Error(c.Writer, "Failed to fetch the resource", http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "Failed to create request")
 		return
 	}
 
@@ -152,7 +156,7 @@ func (h *HttpServer) preview(c *gin.Context) {
 	//request.Header.Set("Referer", parsedURL.Scheme+"://"+parsedURL.Host+"/")
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		http.Error(c.Writer, "Failed to fetch the resource", http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "Failed to fetch the resource")
 		return
 	}
 	defer resp.Body.Close()
@@ -166,7 +170,7 @@ func (h *HttpServer) preview(c *gin.Context) {
 
 	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
-		http.Error(c.Writer, "Failed to serve the resource", http.StatusInternalServerError)
+		c.String(http.StatusInternalServerError, "Failed to serve the resource")
 	}
 	return
 }
@@ -180,7 +184,7 @@ func (h *HttpServer) send(t string, data interface{}) {
 		fmt.Println("Error converting map to JSON:", err)
 		return
 	}
-	runtime.EventsEmit(appOnce.ctx, "event", string(jsonData))
+	runtime.EventsEmit(h.app.ctx, "event", string(jsonData))
 }
 
 func (h *HttpServer) writeJson(w http.ResponseWriter, data *ResponseData) {
@@ -188,11 +192,11 @@ func (h *HttpServer) writeJson(w http.ResponseWriter, data *ResponseData) {
 	w.WriteHeader(200)
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
-		globalLogger.Err(err)
+		h.app.Logger.Err(err)
 	}
 }
 
-func (h *HttpServer) error(w http.ResponseWriter, args ...interface{}) {
+func (h *HttpServer) error(c *gin.Context, args ...interface{}) {
 	message := "ok"
 	var data interface{}
 
@@ -202,10 +206,10 @@ func (h *HttpServer) error(w http.ResponseWriter, args ...interface{}) {
 	if len(args) > 1 {
 		data = args[1]
 	}
-	h.writeJson(w, h.buildResp(0, message, data))
+	c.JSON(http.StatusOK, buildResp(0, message, data))
 }
 
-func (h *HttpServer) success(w http.ResponseWriter, args ...interface{}) {
+func (h *HttpServer) success(c *gin.Context, args ...interface{}) {
 	message := "ok"
 	var data interface{}
 
@@ -216,33 +220,25 @@ func (h *HttpServer) success(w http.ResponseWriter, args ...interface{}) {
 	if len(args) > 1 {
 		message = args[1].(string)
 	}
-	h.writeJson(w, h.buildResp(1, message, data))
-}
-
-func (h *HttpServer) buildResp(code int, message string, data interface{}) *ResponseData {
-	return &ResponseData{
-		Code:    code,
-		Message: message,
-		Data:    data,
-	}
+	c.JSON(http.StatusOK, buildResp(1, message, data))
 }
 
 func (h *HttpServer) openDirectoryDialog(c *gin.Context) {
-	folder, err := runtime.OpenDirectoryDialog(appOnce.ctx, runtime.OpenDialogOptions{
+	folder, err := runtime.OpenDirectoryDialog(h.app.ctx, runtime.OpenDialogOptions{
 		DefaultDirectory: "",
 		Title:            "Select a folder",
 	})
 	if err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	h.success(c.Writer, respData{
+	h.success(c, respData{
 		"folder": folder,
 	})
 }
 
 func (h *HttpServer) openFileDialog(c *gin.Context) {
-	filePath, err := runtime.OpenFileDialog(appOnce.ctx, runtime.OpenDialogOptions{
+	filePath, err := runtime.OpenFileDialog(h.app.ctx, runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{
 				DisplayName: "Videos (*.mov;*.mp4)",
@@ -252,10 +248,10 @@ func (h *HttpServer) openFileDialog(c *gin.Context) {
 		Title: "Select a file",
 	})
 	if err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	h.success(c.Writer, respData{
+	h.success(c, respData{
 		"file": filePath,
 	})
 }
@@ -265,7 +261,7 @@ func (h *HttpServer) openFolder(c *gin.Context) {
 		FilePath string `json:"filePath"`
 	}
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
 	filePath := data.FilePath
@@ -284,44 +280,44 @@ func (h *HttpServer) openFolder(c *gin.Context) {
 				if err := cmd.Start(); err != nil {
 					cmd = exec.Command("pcmanfm", filePath)
 					if err := cmd.Start(); err != nil {
-						globalLogger.Err(err)
-						h.error(c.Writer, err.Error())
+						h.app.Logger.Err(err)
+						h.error(c, err.Error())
 						return
 					}
 				}
 			}
 		}
 	default:
-		h.error(c.Writer, "unsupported platform")
+		h.error(c, "unsupported platform")
 		return
 	}
 
 	if err := cmd.Start(); err != nil {
-		globalLogger.Err(err)
-		h.error(c.Writer, err.Error())
+		h.app.Logger.Err(err)
+		h.error(c, err.Error())
 		return
 	}
-	h.success(c.Writer)
+	h.success(c)
 }
 
 func (h *HttpServer) install(c *gin.Context) {
-	if appOnce.isInstall() {
-		h.success(c.Writer, respData{
-			"isPass": systemOnce.Password == "",
+	if h.app.isInstall() {
+		h.success(c, respData{
+			"isPass": h.app.system.Password == "",
 		})
 		return
 	}
 
-	out, err := appOnce.installCert()
+	out, err := h.app.installCert()
 	if err != nil {
-		h.error(c.Writer, err.Error()+"\n"+out, respData{
-			"isPass": systemOnce.Password == "",
+		h.error(c, err.Error()+"\n"+out, respData{
+			"isPass": h.app.system.Password == "",
 		})
 		return
 	}
 
-	h.success(c.Writer, respData{
-		"isPass": systemOnce.Password == "",
+	h.success(c, respData{
+		"isPass": h.app.system.Password == "",
 	})
 }
 
@@ -331,61 +327,61 @@ func (h *HttpServer) setSystemPassword(c *gin.Context) {
 		IsCache  bool   `json:"isCache"`
 	}
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	systemOnce.SetPassword(data.Password, data.IsCache)
-	h.success(c.Writer)
+	h.app.system.SetPassword(data.Password, data.IsCache)
+	h.success(c)
 }
 
 func (h *HttpServer) openSystemProxy(c *gin.Context) {
-	err := appOnce.OpenSystemProxy()
+	err := h.app.OpenSystemProxy()
 	if err != nil {
-		h.error(c.Writer, err.Error(), respData{
-			"value": appOnce.IsProxy,
+		h.error(c, err.Error(), respData{
+			"value": h.app.IsProxy,
 		})
 		return
 	}
-	h.success(c.Writer, respData{
-		"value": appOnce.IsProxy,
+	h.success(c, respData{
+		"value": h.app.IsProxy,
 	})
 }
 
 func (h *HttpServer) unsetSystemProxy(c *gin.Context) {
-	err := appOnce.UnsetSystemProxy()
+	err := h.app.UnsetSystemProxy()
 	if err != nil {
-		h.error(c.Writer, err.Error(), respData{
-			"value": appOnce.IsProxy,
+		h.error(c, err.Error(), respData{
+			"value": h.app.IsProxy,
 		})
 		return
 	}
-	h.success(c.Writer, respData{
-		"value": appOnce.IsProxy,
+	h.success(c, respData{
+		"value": h.app.IsProxy,
 	})
 }
 
 func (h *HttpServer) isProxy(c *gin.Context) {
-	h.success(c.Writer, respData{
-		"value": appOnce.IsProxy,
+	h.success(c, respData{
+		"value": h.app.IsProxy,
 	})
 }
 
 func (h *HttpServer) appInfo(c *gin.Context) {
-	h.success(c.Writer, appOnce)
+	h.success(c, h.app)
 }
 
 func (h *HttpServer) getConfig(c *gin.Context) {
-	h.success(c.Writer, globalConfig)
+	h.success(c, h.app.cfg)
 }
 
 func (h *HttpServer) setConfig(c *gin.Context) {
 	var data Config
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	globalConfig.setConfig(data)
-	h.success(c.Writer)
+	h.app.cfg.setConfig(&data)
+	h.success(c)
 }
 
 func (h *HttpServer) setType(c *gin.Context) {
@@ -395,18 +391,18 @@ func (h *HttpServer) setType(c *gin.Context) {
 	err := c.BindJSON(&data)
 	if err == nil {
 		if data.Type != "" {
-			resourceOnce.setResType(strings.Split(data.Type, ","))
+			h.resource.setResType(strings.Split(data.Type, ","))
 		} else {
-			resourceOnce.setResType([]string{})
+			h.resource.setResType([]string{})
 		}
 	}
 
-	h.success(c.Writer)
+	h.success(c)
 }
 
 func (h *HttpServer) clear(c *gin.Context) {
-	resourceOnce.clear()
-	h.success(c.Writer)
+	h.resource.clear()
+	h.success(c)
 }
 
 func (h *HttpServer) delete(c *gin.Context) {
@@ -415,9 +411,9 @@ func (h *HttpServer) delete(c *gin.Context) {
 	}
 	err := c.BindJSON(&data)
 	if err == nil && data.Sign != "" {
-		resourceOnce.delete(data.Sign)
+		h.resource.delete(data.Sign)
 	}
-	h.success(c.Writer)
+	h.success(c)
 }
 
 func (h *HttpServer) download(c *gin.Context) {
@@ -425,11 +421,11 @@ func (h *HttpServer) download(c *gin.Context) {
 		MediaInfo
 	}
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	resourceOnce.download(data.MediaInfo)
-	h.success(c.Writer)
+	h.resource.download(data.MediaInfo)
+	h.success(c)
 }
 
 func (h *HttpServer) wxFileDecode(c *gin.Context) {
@@ -438,15 +434,15 @@ func (h *HttpServer) wxFileDecode(c *gin.Context) {
 		Filename string `json:"filename"`
 	}
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	savePath, err := resourceOnce.wxFileDecode(data.MediaInfo, data.Filename)
+	savePath, err := h.resource.wxFileDecode(data.MediaInfo, data.Filename)
 	if err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	h.success(c.Writer, respData{
+	h.success(c, respData{
 		"save_path": savePath,
 	})
 }
@@ -454,11 +450,11 @@ func (h *HttpServer) wxFileDecode(c *gin.Context) {
 func (h *HttpServer) wxDecodeKeys(c *gin.Context) {
 	var mediaInfo MediaInfo
 	if err := c.BindJSON(&mediaInfo); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
 	decryptorArray := internal.GetDecryptorBytes(mediaInfo.DecodeKey)
-	h.success(c.Writer, respData{
+	h.success(c, respData{
 		"decryptorBase64": base64.StdEncoding.EncodeToString(decryptorArray),
 	})
 }
@@ -468,16 +464,16 @@ func (h *HttpServer) batchExport(c *gin.Context) {
 		Content string `json:"content"`
 	}
 	if err := c.BindJSON(&data); err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	fileName := filepath.Join(globalConfig.SaveDirectory, "video-downloader-"+shared.GetCurrentDateTimeFormatted()+".txt")
+	fileName := filepath.Join(h.app.cfg.SaveDirectory, "video-downloader-"+shared.GetCurrentDateTimeFormatted()+".txt")
 	err := os.WriteFile(fileName, []byte(data.Content), 0644)
 	if err != nil {
-		h.error(c.Writer, err.Error())
+		h.error(c, err.Error())
 		return
 	}
-	h.success(c.Writer, respData{
+	h.success(c, respData{
 		"file_name": fileName,
 	})
 }

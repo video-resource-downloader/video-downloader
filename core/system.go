@@ -8,22 +8,22 @@ import (
 )
 
 type SystemSetup struct {
+	app       *App
 	CertFile  string
 	CacheFile string
 	Password  string
 	aesCipher *AESCipher
 }
 
-func initSystem() *SystemSetup {
-	if systemOnce == nil {
-		systemOnce = &SystemSetup{
-			aesCipher: NewAESCipher("resd48w2d7er95627d447c490a8f02ff"),
-			CertFile:  filepath.Join(appOnce.UserDir, "cert.crt"),
-			CacheFile: filepath.Join(appOnce.UserDir, "pass.cache"),
-		}
-		systemOnce.checkPasswordFile()
+func newSystem(app *App) *SystemSetup {
+	system := &SystemSetup{
+		app:       app,
+		aesCipher: NewAESCipher("resd48w2d7er95627d447c490a8f02ff"),
+		CertFile:  filepath.Join(app.UserDir, "cert.crt"),
+		CacheFile: filepath.Join(app.UserDir, "pass.cache"),
 	}
-	return systemOnce
+	system.checkPasswordFile()
+	return system
 }
 
 func (s *SystemSetup) initCert() ([]byte, error) {
@@ -32,11 +32,11 @@ func (s *SystemSetup) initCert() ([]byte, error) {
 		return content, nil
 	}
 	if os.IsNotExist(err) {
-		err = os.WriteFile(s.CertFile, appOnce.PublicCrt, 0750)
+		err = os.WriteFile(s.CertFile, s.app.PublicCrt, 0750)
 		if err != nil {
 			return nil, err
 		}
-		return appOnce.PublicCrt, nil
+		return s.app.PublicCrt, nil
 	} else {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ type MimeInfo struct {
 
 // Config struct
 type Config struct {
+	app           *App
 	storage       *Storage
 	Theme         string              `json:"Theme"`
 	Locale        string              `json:"Locale"`
@@ -37,15 +38,11 @@ type Config struct {
 	UserAgent     string              `json:"UserAgent"`
 	UseHeaders    string              `json:"UseHeaders"`
 	MimeMap       map[string]MimeInfo `json:"MimeMap"`
+	mimeMux       sync.RWMutex
 }
 
-var (
-	mimeMux sync.RWMutex
-)
-
-func initConfig() *Config {
-	if globalConfig == nil {
-		def := `
+func newConfig(app *App) *Config {
+	def := `
 {
   "Host": "127.0.0.1",
   "Port": "22321",
@@ -124,36 +121,22 @@ func initConfig() *Config {
 	}
 }
 `
-		def = strings.ReplaceAll(def, "__TaskNumber__", strconv.Itoa(runtime.NumCPU()*2))
-		globalConfig = &Config{
-			storage: NewStorage("config.json", []byte(def)),
-		}
+	def = strings.ReplaceAll(def, "__TaskNumber__", strconv.Itoa(runtime.NumCPU()*2))
 
-		defaultMap := make(map[string]interface{})
-		_ = json.Unmarshal([]byte(def), &defaultMap)
-
-		data, err := globalConfig.storage.Load()
-		if err == nil {
-			var loadedMap map[string]interface{}
-			_ = json.Unmarshal(data, &loadedMap)
-
-			for key, val := range defaultMap {
-				if _, ok := loadedMap[key]; !ok {
-					loadedMap[key] = val
-				}
-			}
-
-			finalBytes, _ := json.Marshal(loadedMap)
-			_ = json.Unmarshal(finalBytes, &globalConfig)
-
-		} else {
-			globalLogger.Esg(err, "load config err")
-		}
+	var cfg Config
+	_ = json.Unmarshal([]byte(def), &cfg)
+	storage := NewStorage(app, "config.json", []byte(def))
+	if data, err := storage.Load(); err != nil {
+		app.Logger.Esg(err, "load config err")
+	} else {
+		_ = json.Unmarshal(data, &cfg)
 	}
-	return globalConfig
+	cfg.app = app
+	cfg.storage = storage
+	return &cfg
 }
 
-func (c *Config) setConfig(config Config) {
+func (c *Config) setConfig(config *Config) {
 	oldProxy := c.UpstreamProxy
 	openProxy := c.OpenProxy
 	c.Host = config.Host
@@ -180,16 +163,15 @@ func (c *Config) setConfig(config Config) {
 	c.WxAction = config.WxAction
 	c.UseHeaders = config.UseHeaders
 	if oldProxy != c.UpstreamProxy || openProxy != c.OpenProxy {
-		proxyOnce.setTransport()
+		c.app.httpServer.proxy.setTransport()
 	}
 
-	mimeMux.Lock()
+	c.mimeMux.Lock()
 	c.MimeMap = config.MimeMap
-	mimeMux.Unlock()
+	c.mimeMux.Unlock()
 
-	jsonData, err := json.Marshal(c)
-	if err == nil {
-		_ = globalConfig.storage.Store(jsonData)
+	if data, err := json.Marshal(c); err == nil {
+		_ = c.storage.Store(data)
 	}
 }
 
@@ -228,8 +210,8 @@ func (c *Config) getConfig(key string) interface{} {
 	case "UseHeaders":
 		return c.UseHeaders
 	case "MimeMap":
-		mimeMux.RLock()
-		defer mimeMux.RUnlock()
+		c.mimeMux.RLock()
+		defer c.mimeMux.RUnlock()
 		return c.MimeMap
 	default:
 		return nil
@@ -237,8 +219,8 @@ func (c *Config) getConfig(key string) interface{} {
 }
 
 func (c *Config) typeSuffix(mime string) (string, string) {
-	mimeMux.RLock()
-	defer mimeMux.RUnlock()
+	c.mimeMux.RLock()
+	defer c.mimeMux.RUnlock()
 	mime = strings.ToLower(strings.Split(mime, ";")[0])
 	if v, ok := c.MimeMap[mime]; ok {
 		return v.Type, v.Suffix

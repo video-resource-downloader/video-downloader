@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"net"
@@ -17,9 +16,10 @@ import (
 )
 
 type Proxy struct {
-	ctx   context.Context
-	Proxy *goproxy.ProxyHttpServer
-	Is    bool
+	app            *App
+	Proxy          *goproxy.ProxyHttpServer
+	Is             bool
+	pluginRegistry map[string]shared.Plugin
 }
 
 type MediaInfo struct {
@@ -39,9 +39,11 @@ type MediaInfo struct {
 	OtherData   map[string]string
 }
 
-var pluginRegistry = make(map[string]shared.Plugin)
-
-func init() {
+func newProxy(app *App, httpServer *HttpServer, resource *Resource) *Proxy {
+	proxy := &Proxy{
+		app:            app,
+		pluginRegistry: make(map[string]shared.Plugin),
+	}
 	ps := []shared.Plugin{
 		&plugins.QqPlugin{},
 		&plugins.DefaultPlugin{},
@@ -49,48 +51,43 @@ func init() {
 
 	bridge := &shared.Bridge{
 		GetVersion: func() string {
-			return appOnce.Version
+			return app.Version
 		},
 		GetResType: func(key string) (bool, bool) {
-			return resourceOnce.getResType(key)
+			return resource.getResType(key)
 		},
 		TypeSuffix: func(mine string) (string, string) {
-			return globalConfig.typeSuffix(mine)
+			return app.cfg.typeSuffix(mine)
 		},
 		MediaIsMarked: func(key string) bool {
-			return resourceOnce.mediaIsMarked(key)
+			return resource.mediaIsMarked(key)
 		},
 		MarkMedia: func(key string) {
-			resourceOnce.markMedia(key)
+			resource.markMedia(key)
 		},
 		GetConfig: func(key string) interface{} {
-			return globalConfig.getConfig(key)
+			return app.cfg.getConfig(key)
 		},
 		Send: func(t string, data interface{}) {
-			httpServerOnce.send(t, data)
+			httpServer.send(t, data)
 		},
 	}
 
 	for _, p := range ps {
 		p.SetBridge(bridge)
 		for _, domain := range p.Domains() {
-			pluginRegistry[domain] = p
+			proxy.pluginRegistry[domain] = p
 		}
 	}
-}
 
-func initProxy() *Proxy {
-	if proxyOnce == nil {
-		proxyOnce = &Proxy{}
-		proxyOnce.Startup()
-	}
-	return proxyOnce
+	proxy.Startup()
+	return proxy
 }
 
 func (p *Proxy) Startup() {
 	err := p.setCa()
 	if err != nil {
-		DialogErr("Failed to start proxy service：" + err.Error())
+		DialogErr(p.app.Context(), "Failed to start proxy service："+err.Error())
 		return
 	}
 
@@ -104,9 +101,9 @@ func (p *Proxy) Startup() {
 }
 
 func (p *Proxy) setCa() error {
-	ca, err := tls.X509KeyPair(appOnce.PublicCrt, appOnce.PrivateKey)
+	ca, err := tls.X509KeyPair(p.app.PublicCrt, p.app.PrivateKey)
 	if err != nil {
-		DialogErr("Failed to start proxy service 1")
+		DialogErr(p.app.Context(), "Failed to start proxy service 1")
 		return err
 	}
 	if ca.Leaf, err = x509.ParseCertificate(ca.Certificate[0]); err != nil {
@@ -132,8 +129,8 @@ func (p *Proxy) setTransport() {
 		IdleConnTimeout:       30 * time.Second,
 	}
 
-	if globalConfig.UpstreamProxy != "" && globalConfig.OpenProxy && !strings.Contains(globalConfig.UpstreamProxy, globalConfig.Port) {
-		proxyURL, err := url.Parse(globalConfig.UpstreamProxy)
+	if p.app.cfg.UpstreamProxy != "" && p.app.cfg.OpenProxy && !strings.Contains(p.app.cfg.UpstreamProxy, p.app.cfg.Port) {
+		proxyURL, err := url.Parse(p.app.cfg.UpstreamProxy)
 		if err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
@@ -143,7 +140,7 @@ func (p *Proxy) setTransport() {
 
 func (p *Proxy) matchPlugin(host string) shared.Plugin {
 	domain := shared.GetTopLevelDomain(host)
-	if plugin, ok := pluginRegistry[domain]; ok {
+	if plugin, ok := p.pluginRegistry[domain]; ok {
 		return plugin
 	}
 	return nil
@@ -161,7 +158,7 @@ func (p *Proxy) httpRequestEvent(r *http.Request, ctx *goproxy.ProxyCtx) (*http.
 			return newReq, nil
 		}
 	}
-	return pluginRegistry["default"].OnRequest(r, ctx)
+	return p.pluginRegistry["default"].OnRequest(r, ctx)
 }
 
 func (p *Proxy) httpResponseEvent(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
@@ -177,5 +174,5 @@ func (p *Proxy) httpResponseEvent(resp *http.Response, ctx *goproxy.ProxyCtx) *h
 		}
 	}
 
-	return pluginRegistry["default"].OnResponse(resp, ctx)
+	return p.pluginRegistry["default"].OnResponse(resp, ctx)
 }

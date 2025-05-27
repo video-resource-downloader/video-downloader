@@ -19,7 +19,7 @@ func (s *SystemSetup) setProxy() error {
 	}
 	defer key.Close()
 
-	err = key.SetStringValue("ProxyServer", "127.0.0.1:"+globalConfig.Port)
+	err = key.SetStringValue("ProxyServer", "127.0.0.1:"+s.app.cfg.Port)
 	if err != nil {
 		return err
 	}

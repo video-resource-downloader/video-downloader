@@ -5,16 +5,18 @@ import (
 	"strings"
 )
 
-func Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if HandleApi(w, r) {
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func Middleware(app *App) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if HandleApi(app, w, r) {
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
-func HandleApi(w http.ResponseWriter, r *http.Request) bool {
+func HandleApi(app *App, w http.ResponseWriter, r *http.Request) bool {
 	if strings.HasPrefix(r.URL.Path, "/api") {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -23,7 +25,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) bool {
 			w.WriteHeader(http.StatusNoContent)
 			return true
 		}
-		httpServerOnce.ServeHTTP(w, r)
+		app.httpServer.ServeHTTP(w, r)
 		return true
 	}
 	return false

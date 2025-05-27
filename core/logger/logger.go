@@ -1,4 +1,4 @@
-package core
+package logger
 
 import (
 	"fmt"
@@ -14,25 +14,6 @@ import (
 type Logger struct {
 	zerolog.Logger
 	logFile *os.File
-}
-
-func initLogger() *Logger {
-	if globalLogger == nil {
-		globalLogger = NewLogger(!shared.IsDevelopment(), filepath.Join(appOnce.UserDir, "logs", "app.log"))
-	}
-	return globalLogger
-}
-
-func (l *Logger) Close() {
-	_ = l.logFile.Close()
-}
-
-func (l *Logger) Err(err error) {
-	l.Error().Stack().Err(err)
-}
-
-func (l *Logger) Esg(err error, format string, v ...interface{}) {
-	l.Error().Stack().Err(err).Msgf(fmt.Sprintf(format, v...))
 }
 
 // NewLogger create a new logger
@@ -67,4 +48,16 @@ func NewLogger(logFile bool, logPath string) *Logger {
 		TimeFormat: "2006-01-02 15:04:05",
 	}).With().Timestamp().Logger()
 	return logger
+}
+
+func (l *Logger) Close() {
+	_ = l.logFile.Close()
+}
+
+func (l *Logger) Err(err error) {
+	l.Error().Stack().Err(err)
+}
+
+func (l *Logger) Esg(err error, format string, v ...interface{}) {
+	l.Error().Stack().Err(err).Msgf(fmt.Sprintf(format, v...))
 }

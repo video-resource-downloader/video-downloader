@@ -25,25 +25,27 @@ type Resource struct {
 	mediaMark  sync.Map
 	resType    map[string]bool
 	resTypeMux sync.RWMutex
+
+	app        *App
+	httpServer *HttpServer
 }
 
-func initResource() *Resource {
-	if resourceOnce == nil {
-		resourceOnce = &Resource{
-			resType: map[string]bool{
-				"all":   true,
-				"image": true,
-				"audio": true,
-				"video": true,
-				"m3u8":  true,
-				"live":  true,
-				"xls":   true,
-				"doc":   true,
-				"pdf":   true,
-			},
-		}
+func newResource(app *App, httpServer *HttpServer) *Resource {
+	return &Resource{
+		resType: map[string]bool{
+			"all":   true,
+			"image": true,
+			"audio": true,
+			"video": true,
+			"m3u8":  true,
+			"live":  true,
+			"xls":   true,
+			"doc":   true,
+			"pdf":   true,
+		},
+		app:        app,
+		httpServer: httpServer,
 	}
-	return resourceOnce
 }
 
 func (r *Resource) mediaIsMarked(key string) bool {
@@ -91,7 +93,7 @@ func (r *Resource) delete(sign string) {
 }
 
 func (r *Resource) download(mediaInfo MediaInfo) {
-	if globalConfig.SaveDirectory == "" {
+	if r.app.cfg.SaveDirectory == "" {
 		return
 	}
 	go func(mediaInfo MediaInfo) {
@@ -99,7 +101,7 @@ func (r *Resource) download(mediaInfo MediaInfo) {
 		fileName := shared.Md5(rawUrl)
 		if mediaInfo.Description != "" {
 			fileName = regexp.MustCompile(`[^\w\p{Han}]`).ReplaceAllString(mediaInfo.Description, "")
-			fileLen := globalConfig.FilenameLen
+			fileLen := r.app.cfg.FilenameLen
 			if fileLen <= 0 {
 				fileLen = 10
 			}
@@ -110,14 +112,14 @@ func (r *Resource) download(mediaInfo MediaInfo) {
 			}
 		}
 
-		if globalConfig.FilenameTime {
-			mediaInfo.SavePath = filepath.Join(globalConfig.SaveDirectory, fileName+"_"+shared.GetCurrentDateTimeFormatted()+mediaInfo.Suffix)
+		if r.app.cfg.FilenameTime {
+			mediaInfo.SavePath = filepath.Join(r.app.cfg.SaveDirectory, fileName+"_"+shared.GetCurrentDateTimeFormatted()+mediaInfo.Suffix)
 		} else {
-			mediaInfo.SavePath = filepath.Join(globalConfig.SaveDirectory, fileName+mediaInfo.Suffix)
+			mediaInfo.SavePath = filepath.Join(r.app.cfg.SaveDirectory, fileName+mediaInfo.Suffix)
 		}
 
 		if strings.Contains(rawUrl, "qq.com") {
-			if globalConfig.Quality == 1 &&
+			if r.app.cfg.Quality == 1 &&
 				strings.Contains(rawUrl, "encfilekey=") &&
 				strings.Contains(rawUrl, "token=") {
 				parseUrl, err := url.Parse(rawUrl)
@@ -127,20 +129,20 @@ func (r *Resource) download(mediaInfo MediaInfo) {
 						"?encfilekey=" + queryParams.Get("encfilekey") +
 						"&token=" + queryParams.Get("token")
 				}
-			} else if globalConfig.Quality > 1 && mediaInfo.OtherData["wx_file_formats"] != "" {
+			} else if r.app.cfg.Quality > 1 && mediaInfo.OtherData["wx_file_formats"] != "" {
 				format := strings.Split(mediaInfo.OtherData["wx_file_formats"], "#")
 				qualityMap := []string{
 					format[0],
 					format[len(format)/2],
 					format[len(format)-1],
 				}
-				rawUrl += "&X-snsvideoflag=" + qualityMap[globalConfig.Quality-2]
+				rawUrl += "&X-snsvideoflag=" + qualityMap[r.app.cfg.Quality-2]
 			}
 		}
 
 		headers, _ := r.parseHeaders(mediaInfo)
 
-		downloader := NewFileDownloader(rawUrl, mediaInfo.SavePath, globalConfig.TaskNumber, headers)
+		downloader := NewFileDownloader(r.app, rawUrl, mediaInfo.SavePath, r.app.cfg.TaskNumber, headers)
 		downloader.progressCallback = func(totalDownloaded, totalSize float64, taskID int, taskProgress float64) {
 			r.progressEventsEmit(mediaInfo, strconv.Itoa(int(totalDownloaded*100/totalSize))+"%", shared.DownloadStatusRunning)
 		}
@@ -221,7 +223,7 @@ func (r *Resource) progressEventsEmit(mediaInfo MediaInfo, args ...string) {
 		Status = args[1]
 	}
 
-	httpServerOnce.send("downloadProgress", map[string]interface{}{
+	r.httpServer.send("downloadProgress", map[string]interface{}{
 		"Id":       mediaInfo.Id,
 		"Status":   Status,
 		"SavePath": mediaInfo.SavePath,

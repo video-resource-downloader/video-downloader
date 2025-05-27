@@ -36,6 +36,7 @@ type DownloadTask struct {
 }
 
 type FileDownloader struct {
+	app              *App
 	Url              string
 	Referer          string
 	ProxyUrl         *url.URL
@@ -49,8 +50,9 @@ type FileDownloader struct {
 	progressCallback ProgressCallback
 }
 
-func NewFileDownloader(url, filename string, totalTasks int, headers map[string]string) *FileDownloader {
+func NewFileDownloader(app *App, url, filename string, totalTasks int, headers map[string]string) *FileDownloader {
 	return &FileDownloader{
+		app:              app,
 		Url:              url,
 		FileName:         filename,
 		totalTasks:       totalTasks,
@@ -77,7 +79,7 @@ func (fd *FileDownloader) buildClient() *http.Client {
 
 func (fd *FileDownloader) setHeaders(request *http.Request) {
 	for key, value := range fd.Headers {
-		if strings.Contains(globalConfig.UseHeaders, key) {
+		if strings.Contains(fd.app.cfg.UseHeaders, key) {
 			request.Header.Set(key, value)
 		}
 	}
@@ -92,8 +94,8 @@ func (fd *FileDownloader) init() error {
 		fd.Referer = parsedURL.Scheme + "://" + parsedURL.Host + "/"
 	}
 
-	if globalConfig.DownloadProxy && globalConfig.UpstreamProxy != "" && !strings.Contains(globalConfig.UpstreamProxy, globalConfig.Port) {
-		proxyURL, err := url.Parse(globalConfig.UpstreamProxy)
+	if fd.app.cfg.DownloadProxy && fd.app.cfg.UpstreamProxy != "" && !strings.Contains(fd.app.cfg.UpstreamProxy, fd.app.cfg.Port) {
+		proxyURL, err := url.Parse(fd.app.cfg.UpstreamProxy)
 		if err == nil {
 			fd.ProxyUrl = proxyURL
 		}
@@ -105,7 +107,7 @@ func (fd *FileDownloader) init() error {
 	}
 
 	if _, ok := fd.Headers["User-Agent"]; !ok {
-		fd.Headers["User-Agent"] = globalConfig.UserAgent
+		fd.Headers["User-Agent"] = fd.app.cfg.UserAgent
 	}
 	if _, ok := fd.Headers["Referer"]; !ok {
 		fd.Headers["Referer"] = fd.Referer
@@ -121,7 +123,7 @@ func (fd *FileDownloader) init() error {
 		}
 		if retries < MaxRetries-1 {
 			time.Sleep(RetryDelay)
-			globalLogger.Warn().Msgf("HEAD request failed, retrying (%d/%d): %v", retries+1, MaxRetries, err)
+			fd.app.Logger.Warn().Msgf("HEAD request failed, retrying (%d/%d): %v", retries+1, MaxRetries, err)
 		}
 	}
 
@@ -254,7 +256,7 @@ func (fd *FileDownloader) startDownloadTask(wg *sync.WaitGroup, progressChan cha
 		}
 
 		task.err = err
-		globalLogger.Warn().Msgf("Task %d failed (attempt %d/%d): %v", task.taskID, retries+1, MaxRetries, err)
+		fd.app.Logger.Warn().Msgf("Task %d failed (attempt %d/%d): %v", task.taskID, retries+1, MaxRetries, err)
 
 		if retries < MaxRetries-1 {
 			time.Sleep(RetryDelay)

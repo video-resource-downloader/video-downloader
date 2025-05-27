@@ -44,9 +44,9 @@ func (s *SystemSetup) setProxy() error {
 	commands := [][]string{
 		{"gsettings", "set", "org.gnome.system.proxy", "mode", "manual"},
 		{"gsettings", "set", "org.gnome.system.proxy.http", "host", "127.0.0.1"},
-		{"gsettings", "set", "org.gnome.system.proxy.http", "port", globalConfig.Port},
+		{"gsettings", "set", "org.gnome.system.proxy.http", "port", s.app.cfg.Port},
 		{"gsettings", "set", "org.gnome.system.proxy.https", "host", "127.0.0.1"},
-		{"gsettings", "set", "org.gnome.system.proxy.https", "port", globalConfig.Port},
+		{"gsettings", "set", "org.gnome.system.proxy.https", "port", s.app.cfg.Port},
 	}
 
 	isSuccess := false
@@ -87,11 +87,11 @@ func (s *SystemSetup) installCert() (string, error) {
 		return "", fmt.Errorf("detect distro failed: %w", err)
 	}
 
-	certName := appOnce.AppName + ".crt"
+	certName := s.app.AppName + ".crt"
 
 	var certPath string
 	if distro == "deepin" {
-		certDir := "/usr/share/ca-certificates/" + appOnce.AppName
+		certDir := "/usr/share/ca-certificates/" + s.app.AppName
 		certPath = certDir + "/" + certName
 		s.runCommand([]string{"mkdir", "-p", certDir}, true)
 	} else {

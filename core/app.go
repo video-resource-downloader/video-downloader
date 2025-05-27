@@ -12,6 +12,7 @@ import (
 
 	"github.com/vrischmann/userdir"
 
+	"github.com/video-resource-downloader/video-downloader/core/logger"
 	"github.com/video-resource-downloader/video-downloader/core/shared"
 )
 
@@ -23,37 +24,31 @@ type App struct {
 	Description string `json:"Description"`
 	Copyright   string `json:"Copyright"`
 	UserDir     string `json:"-"`
+	LogFile     string `json:"-"`
 	LockFile    string `json:"-"`
 	PublicCrt   []byte `json:"-"`
 	PrivateKey  []byte `json:"-"`
 	IsProxy     bool   `json:"IsProxy"`
+
+	cfg        *Config
+	system     *SystemSetup
+	Logger     *logger.Logger
+	httpServer *HttpServer
 }
 
-var (
-	appOnce        *App
-	globalConfig   *Config
-	globalLogger   *Logger
-	resourceOnce   *Resource
-	systemOnce     *SystemSetup
-	proxyOnce      *Proxy
-	httpServerOnce *HttpServer
-)
-
 func NewApp(assets embed.FS, wjs string) *App {
-	if appOnce == nil {
-		matches := regexp.MustCompile(`"productVersion":\s*"([\d.]+)"`).FindStringSubmatch(wjs)
-		version := "1.0.1"
-		if len(matches) > 0 {
-			version = matches[1]
-		}
-
-		appOnce = &App{
-			assets:      assets,
-			AppName:     "video-downloader",
-			Version:     version,
-			Description: "video-downloader是一款集网络资源嗅探 + 高速下载功能于一体的软件，高颜值、高性能和多样化，提供个人用户下载自己上传到各大平台的网络资源功能！",
-			Copyright:   "Copyright © 2023~" + strconv.Itoa(time.Now().Year()),
-			PublicCrt: []byte(`-----BEGIN CERTIFICATE-----
+	matches := regexp.MustCompile(`"productVersion":\s*"([\d.]+)"`).FindStringSubmatch(wjs)
+	version := "1.0.1"
+	if len(matches) > 0 {
+		version = matches[1]
+	}
+	app := &App{
+		assets:      assets,
+		AppName:     "video-downloader",
+		Version:     version,
+		Description: "video-downloader是一款集网络资源嗅探 + 高速下载功能于一体的软件，高颜值、高性能和多样化，提供个人用户下载自己上传到各大平台的网络资源功能！",
+		Copyright:   "Copyright © 2023~" + strconv.Itoa(time.Now().Year()),
+		PublicCrt: []byte(`-----BEGIN CERTIFICATE-----
 MIIDwzCCAqugAwIBAgIUFAnC6268dp/z1DR9E1UepiWgWzkwDQYJKoZIhvcNAQEL
 BQAwcDELMAkGA1UEBhMCQ04xEjAQBgNVBAgMCUNob25ncWluZzESMBAGA1UEBwwJ
 Q2hvbmdxaW5nMQ4wDAYDVQQKDAVnb3dhczEWMBQGA1UECwwNSVQgRGVwYXJ0bWVu
@@ -77,7 +72,7 @@ e3oowvgwikqm6XR6BEcRpPkztqcKST7jPFGHiXWsAqiibc+/plMW9qebhfMXEGhQ
 D8HixYbEDg==
 -----END CERTIFICATE-----
 `),
-			PrivateKey: []byte(`-----BEGIN PRIVATE KEY-----
+		PrivateKey: []byte(`-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDcDt23t6ioBoHG
 /Y2mOjxntWQa9dP3eNl+mAC6425DlEtyc6czNAIKuuM9wt+wAwDQAgrd5RaxdcpJ
 H1JlMkEtBFkIkdn0Ag98D7nwlVA9ON3xQi5Bkl+sN/oWOE8lOwvNyNNT6ZPu3qUS
@@ -106,41 +101,43 @@ Njg4zWuAEVErgPoNBcOXAVWLCTU/qGIEMNpZL6Ok34kf13pJDMjQ8eDuQHu5CSqf
 ILKEQKmPPzKs7kp/7Nz+2cT3
 -----END PRIVATE KEY-----
 `),
-		}
-		appOnce.UserDir = filepath.Join(userdir.GetConfigHome(), appOnce.AppName)
-		err := os.MkdirAll(appOnce.UserDir, 0750)
-		if err != nil {
-			fmt.Println("Mkdir UserDir err: ", err.Error())
-		}
-		appOnce.LockFile = filepath.Join(appOnce.UserDir, "install.lock")
-		initLogger()
-		initConfig()
-		initProxy()
-		initResource()
-		initHttpServer()
-		initSystem()
 	}
-	return appOnce
+	app.UserDir = filepath.Join(userdir.GetConfigHome(), app.AppName)
+	if err := os.MkdirAll(app.UserDir, 0750); err != nil {
+		fmt.Println("Mkdir UserDir err: ", err.Error())
+	}
+	app.LogFile = filepath.Join(app.UserDir, "logs", "app.log")
+	app.LockFile = filepath.Join(app.UserDir, "install.lock")
+	app.Logger = logger.NewLogger(!shared.IsDevelopment(), app.LogFile)
+
+	app.cfg = newConfig(app)
+	app.system = newSystem(app)
+	app.httpServer = NewHttpServer(app)
+	return app
+}
+
+func (a *App) Context() context.Context {
+	return a.ctx
 }
 
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
-	go httpServerOnce.run()
+	go a.httpServer.run()
 }
 
-func (a *App) OnExit() {
+func (a *App) Shutdown(_ context.Context) {
 	_ = a.UnsetSystemProxy()
-	globalLogger.Close()
+	a.Logger.Close()
 }
 
 func (a *App) installCert() (string, error) {
-	out, err := systemOnce.installCert()
+	out, err := a.system.installCert()
 	if err != nil {
-		globalLogger.Esg(err, out)
+		a.Logger.Esg(err, out)
 		return out, err
 	} else {
 		if err := a.lock(); err != nil {
-			globalLogger.Err(err)
+			a.Logger.Err(err)
 		}
 	}
 	return out, nil
@@ -150,24 +147,22 @@ func (a *App) OpenSystemProxy() error {
 	if a.IsProxy {
 		return nil
 	}
-	err := systemOnce.setProxy()
-	if err == nil {
-		a.IsProxy = true
-		return nil
+	if err := a.system.setProxy(); err != nil {
+		return err
 	}
-	return err
+	a.IsProxy = true
+	return nil
 }
 
 func (a *App) UnsetSystemProxy() error {
 	if !a.IsProxy {
 		return nil
 	}
-	err := systemOnce.unsetProxy()
-	if err == nil {
-		a.IsProxy = false
-		return nil
+	if err := a.system.unsetProxy(); err != nil {
+		return err
 	}
-	return err
+	a.IsProxy = false
+	return nil
 }
 
 func (a *App) isInstall() bool {

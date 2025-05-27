@@ -30,7 +30,7 @@ var wailsJson string
 func main() {
 	// Create an instance of the app structure
 	app := core.NewApp(assets, wailsJson)
-	bind := core.NewBind()
+	bind := core.NewBind(app)
 	isMac := runtime.GOOS == "darwin"
 	// menu
 	appMenu := menu.NewMenu()
@@ -52,7 +52,7 @@ func main() {
 		EnableDefaultContextMenu: true,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
-			Middleware: core.Middleware,
+			Middleware: core.Middleware(app),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {
@@ -71,7 +71,7 @@ func main() {
 			app.Startup(ctx)
 		},
 		OnShutdown: func(ctx context.Context) {
-			app.OnExit()
+			app.Shutdown(ctx)
 		},
 		Bind: []interface{}{
 			bind,

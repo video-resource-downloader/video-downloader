@@ -1,16 +1,19 @@
 package core
 
 type Bind struct {
+	app *App
 }
 
-func NewBind() *Bind {
-	return &Bind{}
+func NewBind(app *App) *Bind {
+	return &Bind{
+		app: app,
+	}
 }
 
 func (b *Bind) Config() *ResponseData {
-	return httpServerOnce.buildResp(1, "ok", globalConfig)
+	return buildResp(1, "ok", b.app.cfg)
 }
 
 func (b *Bind) AppInfo() *ResponseData {
-	return httpServerOnce.buildResp(1, "ok", appOnce)
+	return buildResp(1, "ok", b.app)
 }

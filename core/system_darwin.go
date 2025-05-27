@@ -68,8 +68,8 @@ func (s *SystemSetup) setProxy() error {
 	var errs strings.Builder
 	for _, serviceName := range services {
 		commands := [][]string{
-			{"networksetup", "-setwebproxy", serviceName, "127.0.0.1", globalConfig.Port},
-			{"networksetup", "-setsecurewebproxy", serviceName, "127.0.0.1", globalConfig.Port},
+			{"networksetup", "-setwebproxy", serviceName, "127.0.0.1", s.app.cfg.Port},
+			{"networksetup", "-setsecurewebproxy", serviceName, "127.0.0.1", s.app.cfg.Port},
 		}
 		for _, cmd := range commands {
 			if output, err := s.runCommand(cmd); err != nil {
