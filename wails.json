@@ -7,14 +7,14 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "bang88888",
-    "email": "bang88888@gmail.com"
+    "name": "video.downloader.git",
+    "email": "video.downloader.git@gmail.com"
   },
   "info": {
     "companyName": "video-downloader",
     "productName": "video-downloader",
-    "productVersion": "3.0.6",
-    "copyright": "Copyright © 2023",
-    "comments": "This is a high-value high-performance and diverse resource downloader called video-downloader."
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2025",
+    "comments": "This is a high-value high-performance and diverse video resource downloader called video-downloader."
   }
 }

@@ -1,7 +1,6 @@
 import type {AxiosResponse, InternalAxiosRequestConfig} from 'axios'
 import axios from 'axios'
 import {useIndexStore} from "@/stores";
-import {computed} from "vue";
 
 interface RequestOptions {
     url: string
@@ -33,7 +32,8 @@ instance.interceptors.response.use(
 )
 
 const request = ({url, method, params, data}: RequestOptions): Promise<any> => {
-    return instance({url, method, params, data, baseURL: window.$baseUrl})
+    const store = useIndexStore()
+    return instance({url, method, params, data, baseURL: store.baseUrl})
 }
 
 export default request

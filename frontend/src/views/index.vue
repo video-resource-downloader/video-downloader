@@ -419,7 +419,7 @@ const batchImport = () => {
   loading.value = true
   let jsonData = []
   for (let i = 0; i < data.value.length; i++) {
-    // jsonData.push(encodeURIComponent(JSON.stringify(data.value[i])))
+    // jsonData.push(encodeURIComponent(JSON.stringify(data.value[i])))q
     jsonData.push(JSON.stringify(data.value[i]))
   }
   appApi.batchImport({content: jsonData.join("\n")}).then((res: appType.Res) => {
