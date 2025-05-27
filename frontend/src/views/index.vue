@@ -16,7 +16,7 @@
         <NButton tertiary type="info" @click.stop="batchDown" style="--wails-draggable:no-drag">
           {{ t("index.batch_download") }}
         </NButton>
-        <NButton tertiary type="info" @click.stop="batchImport" style="--wails-draggable:no-drag">
+        <NButton tertiary type="info" @click.stop="batchExport" style="--wails-draggable:no-drag">
           {{ t("index.batch_export") }}
         </NButton>
         <NButton tertiary type="info" @click.stop="showImport=true" style="--wails-draggable:no-drag">
@@ -406,7 +406,7 @@ const batchDown = async () => {
   }
 }
 
-const batchImport = () => {
+const batchExport = () => {
   if (checkedRowKeysValue.value.length <= 0) {
     window?.$message?.error(t("index.use_data"))
     return
@@ -422,7 +422,7 @@ const batchImport = () => {
     // jsonData.push(encodeURIComponent(JSON.stringify(data.value[i])))q
     jsonData.push(JSON.stringify(data.value[i]))
   }
-  appApi.batchImport({content: jsonData.join("\n")}).then((res: appType.Res) => {
+  appApi.batchExport({content: jsonData.join("\n")}).then((res: appType.Res) => {
     loading.value = false
     if (res.code === 0) {
       window?.$message?.error(res.message)

@@ -80,7 +80,7 @@ func (h *HttpServer) initRouter() {
 	apiGroup.POST("download", h.download)
 	apiGroup.POST("wx-file-decode", h.wxFileDecode)
 	apiGroup.POST("wx-decode-keys", h.wxDecodeKeys)
-	apiGroup.POST("batch-import", h.batchImport)
+	apiGroup.POST("batch-export", h.batchExport)
 	apiGroup.GET("cert", h.downCert)
 	// 路由未匹配走代理请求
 	h.NoRoute(func(c *gin.Context) {
@@ -463,7 +463,7 @@ func (h *HttpServer) wxDecodeKeys(c *gin.Context) {
 	})
 }
 
-func (h *HttpServer) batchImport(c *gin.Context) {
+func (h *HttpServer) batchExport(c *gin.Context) {
 	var data struct {
 		Content string `json:"content"`
 	}

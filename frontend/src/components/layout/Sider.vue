@@ -151,7 +151,7 @@ const handleFooterUpdate = (key: string, item?: MenuOption) => {
   }
 
   if (key === "github") {
-    BrowserOpenURL("https://github.com/video-resource-downloader/VideoDownloader")
+    BrowserOpenURL("https://github.com/video-resource-downloader/video-downloader")
     return
   }
 

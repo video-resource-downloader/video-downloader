@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -47,7 +48,7 @@ func initConfig() *Config {
 		def := `
 {
   "Host": "127.0.0.1",
-  "Port": "8899",
+  "Port": "22321",
   "Theme": "lightTheme",
   "Locale": "zh",
   "Quality": 0,
@@ -164,8 +165,9 @@ func (c *Config) setConfig(config Config) {
 	if c.SaveDirectory == "" {
 		dir, err := homedir.Dir()
 		if err == nil {
-			c.SaveDirectory = filepath.Join(dir, "Downloads")
+			c.SaveDirectory = filepath.Join(dir, "Downloads", "video-downloader")
 		}
+		_ = os.MkdirAll(c.SaveDirectory, 0755)
 	}
 	c.FilenameLen = config.FilenameLen
 	c.FilenameTime = config.FilenameTime
