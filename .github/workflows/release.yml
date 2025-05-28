@@ -28,10 +28,28 @@ jobs:
         with:
           go-version: '1.24.2'
 
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -70,19 +88,6 @@ jobs:
           $json.info.productVersion = $TAG_NAME
           $json | ConvertTo-Json -Depth 10 | Set-Content wails.json
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.2'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
       - name: Install jq
         run: choco install jq
         shell: powershell
@@ -90,6 +95,37 @@ jobs:
       - name: Install NSIS
         run: choco install nsis
         shell: powershell
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\go\pkg\mod
+            ~\AppData\Local\go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build and Rename Windows amd64
         shell: bash
@@ -115,13 +151,34 @@ jobs:
   build-linux:
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up QEMU for multi-arch builds
         uses: docker/setup-qemu-action@v3
         with:
           platforms: all
 
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gomodcache
+            .gobuildcache
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
 
       - name: Set wails.json version from release tag
         run: |
@@ -129,11 +186,39 @@ jobs:
           TAG_NAME=${TAG_NAME#v}
           jq --arg v "$TAG_NAME" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
 
+      - name: Install appimagetool and dependencies
+        run: |
+          apt-get update && \
+            apt-get install -y --fix-missing \
+            fuse \
+            libfuse-dev \
+            libfuse2 \
+            && rm -rf /var/lib/apt/lists/*
+          mkdir -p ./build/bin
+          wget -O ./build/bin/appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+          chmod +x ./build/bin/appimagetool-x86_64.AppImage
+
       # x86_64 构建
+      - name: Build Linux amd64 Docker image
+        run: |
+          docker buildx build \
+            --load \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache,mode=max \
+            --platform linux/amd64 \
+            -f build/linux/dockerfile \
+            -t video-downloader-amd-linux \
+            .
+      
       - name: Build and Package Linux amd64 (docker)
         run: |
-          docker build --network host -f build/linux/dockerfile -t video-downloader-amd-linux .
-          docker run --rm --name video-downloader-amd-build --network host --privileged -v $PWD:/www/video-downloader video-downloader-amd-linux bash -c '
+          docker run --rm \
+            --name video-downloader-amd-build \
+            --network host \
+            --privileged \
+            -v $PWD:/www/video-downloader \
+            -v $PWD/.gomodcache:/go/pkg/mod \
+            video-downloader-amd-linux bash -c '
             set -e
             cd /www/video-downloader
             wails build -platform "linux/amd64" -s -skipbindings
@@ -141,7 +226,9 @@ jobs:
             VERSION=$(jq -r ".info.productVersion" wails.json)
             echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
             dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_amd64.deb
-            cp build/bin/video-downloader build/linux/AppImage/usr/bin/
+            # 清理 aarch64/arm64 文件
+            find build/linux/AppImage -type f \( -name "*aarch64*" -o -name "*arm64*" \) -delete
+            cp -f build/bin/video-downloader build/linux/AppImage/usr/bin/
             pushd build/linux/AppImage
             for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
                 path=$(find /usr/lib* -name "$f" 2>/dev/null | head -n 1)
@@ -153,17 +240,33 @@ jobs:
                 fi
             done
             popd
-            wget -O ./build/bin/appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
-            chmod +x ./build/bin/appimagetool-x86_64.AppImage
-            ./build/bin/appimagetool-x86_64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_amd64.AppImage
-            mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_amd64
           '
+          VERSION=$(jq -r ".info.productVersion" wails.json)
+          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 ./build/bin/appimagetool-x86_64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_amd64.AppImage
+          mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_amd64
 
       # arm64 构建
+      - name: Build Linux arm64 Docker image
+        run: |
+          docker buildx build \
+            --load \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache,mode=max \
+            --platform linux/arm64 \
+            -f build/linux/dockerfile \
+            -t video-downloader-arm-linux \
+            .
+      
       - name: Build and Package Linux arm64 (docker)
         run: |
-          docker build --platform linux/arm64 --network host -f build/linux/dockerfile -t video-downloader-arm-linux .
-          docker run --rm --platform linux/arm64 --name video-downloader-arm-build --network host --privileged -v $PWD:/www/video-downloader video-downloader-arm-linux bash -c '
+          docker run --rm \
+            --platform linux/arm64 \
+            --name video-downloader-arm-build \
+            --network host \
+            --privileged \
+            -v $PWD:/www/video-downloader \
+            -v $PWD/.gomodcache:/go/pkg/mod \
+            video-downloader-arm-linux bash -c '
             set -e
             cd /www/video-downloader
             wails build -platform "linux/arm64" -s -skipbindings
@@ -171,7 +274,9 @@ jobs:
             VERSION=$(jq -r ".info.productVersion" wails.json)
             echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
             dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_arm64.deb
-            cp build/bin/video-downloader build/linux/AppImage/usr/bin/
+            # 清理 x86_64/amd64 文件
+            find build/linux/AppImage -type f \( -name "*x86_64*" -o -name "*amd64*" \) -delete
+            cp -f build/bin/video-downloader build/linux/AppImage/usr/bin/
             pushd build/linux/AppImage
             for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
                 path=$(find /usr/lib* -name "$f" 2>/dev/null | head -n 1)
@@ -183,11 +288,10 @@ jobs:
                 fi
             done
             popd
-            wget -O ./build/bin/appimagetool-aarch64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-aarch64.AppImage
-            chmod +x ./build/bin/appimagetool-aarch64.AppImage
-            ./build/bin/appimagetool-aarch64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_arm64.AppImage
-            mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_arm64
           '
+          VERSION=$(jq -r ".info.productVersion" wails.json)
+          ARCH=aarch64 APPIMAGE_EXTRACT_AND_RUN=1 ./build/bin/appimagetool-x86_64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_arm64.AppImage
+          mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_arm64
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
