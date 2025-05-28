@@ -32,8 +32,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            ~/Library/Caches/go-build
             ~/go/pkg/mod
-            ~/.cache/go-build
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
@@ -42,14 +42,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
-      - name: Cache npm
-        uses: actions/cache@v4
+      
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: bash
+        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
+      
+      - uses: actions/cache@v4
+        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-node-
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -105,8 +110,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~\go\pkg\mod
             ~\AppData\Local\go-build
+            ~\go\pkg\mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
@@ -115,14 +120,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
-      - name: Cache npm
-        uses: actions/cache@v4
+    
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: pwsh
+        run: echo "dir=$(npm config get cache)" >> ${env:GITHUB_OUTPUT}
+      
+      - uses: actions/cache@v4
+        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-node-
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -148,16 +158,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-linux:
+  build-linux-amd64:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU for multi-arch builds
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -165,9 +170,9 @@ jobs:
           path: |
             .gomodcache
             .gobuildcache
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-amd64
           restore-keys: |
-            ${{ runner.os }}-go-
+            ${{ runner.os }}-go-amd64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -176,9 +181,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ hashFiles('build/linux/dockerfile') }}-amd64
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-buildx-amd64-
 
       - name: Set wails.json version from release tag
         run: |
@@ -218,6 +223,7 @@ jobs:
             --privileged \
             -v $PWD:/www/video-downloader \
             -v $PWD/.gomodcache:/go/pkg/mod \
+            -v $PWD/.gobuildcache:/go/buildcache \
             video-downloader-amd-linux bash -c '
             set -e
             cd /www/video-downloader
@@ -226,8 +232,6 @@ jobs:
             VERSION=$(jq -r ".info.productVersion" wails.json)
             echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
             dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_amd64.deb
-            # 清理 aarch64/arm64 文件
-            find build/linux/AppImage -type f \( -name "*aarch64*" -o -name "*arm64*" \) -delete
             cp -f build/bin/video-downloader build/linux/AppImage/usr/bin/
             pushd build/linux/AppImage
             for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
@@ -244,6 +248,66 @@ jobs:
           VERSION=$(jq -r ".info.productVersion" wails.json)
           ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 ./build/bin/appimagetool-x86_64.AppImage build/linux/AppImage build/bin/video-downloader_${VERSION}_linux_amd64.AppImage
           mv -f build/bin/video-downloader build/bin/video-downloader_${VERSION}_linux_amd64
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/bin/video-downloader_*_linux_amd64
+            build/bin/video-downloader_*_linux_amd64.deb
+            build/bin/video-downloader_*_linux_amd64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+  
+  build-linux-arm64:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gomodcache
+            .gobuildcache
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-arm64
+          restore-keys: |
+            ${{ runner.os }}-go-arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('build/linux/dockerfile') }}-arm64
+          restore-keys: |
+            ${{ runner.os }}-buildx-arm64-
+
+      - name: Set wails.json version from release tag
+        run: |
+          TAG_NAME=${{ github.ref_name }}
+          TAG_NAME=${TAG_NAME#v}
+          jq --arg v "$TAG_NAME" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      - name: Install appimagetool and dependencies
+        run: |
+          apt-get update && \
+            apt-get install -y --fix-missing \
+            fuse \
+            libfuse-dev \
+            libfuse2 \
+            && rm -rf /var/lib/apt/lists/*
+          mkdir -p ./build/bin
+          wget -O ./build/bin/appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+          chmod +x ./build/bin/appimagetool-x86_64.AppImage
 
       # arm64 构建
       - name: Build Linux arm64 Docker image
@@ -266,16 +330,16 @@ jobs:
             --privileged \
             -v $PWD:/www/video-downloader \
             -v $PWD/.gomodcache:/go/pkg/mod \
+            -v $PWD/.gobuildcache:/go/buildcache \
             video-downloader-arm-linux bash -c '
             set -e
+            go env
             cd /www/video-downloader
             wails build -platform "linux/arm64" -s -skipbindings
             cp build/bin/video-downloader build/linux/Debian/usr/local/bin/
             VERSION=$(jq -r ".info.productVersion" wails.json)
             echo "$(cat build/linux/Debian/DEBIAN/.control | sed -e "s/{{Version}}/${VERSION}/g")" > build/linux/Debian/DEBIAN/control
             dpkg-deb --build ./build/linux/Debian build/bin/video-downloader_${VERSION}_linux_arm64.deb
-            # 清理 x86_64/amd64 文件
-            find build/linux/AppImage -type f \( -name "*x86_64*" -o -name "*amd64*" \) -delete
             cp -f build/bin/video-downloader build/linux/AppImage/usr/bin/
             pushd build/linux/AppImage
             for f in WebKitNetworkProcess WebKitWebProcess libwebkit2gtkinjectedbundle.so; do
@@ -297,11 +361,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/bin/video-downloader_*_linux_amd64
             build/bin/video-downloader_*_linux_arm64
-            build/bin/video-downloader_*_linux_amd64.deb
             build/bin/video-downloader_*_linux_arm64.deb
-            build/bin/video-downloader_*_linux_amd64.AppImage
             build/bin/video-downloader_*_linux_arm64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
