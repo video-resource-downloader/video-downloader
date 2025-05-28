@@ -16,6 +16,7 @@
 
 ### 🎉 爱享素材下载器
 
+> 本项目基于[putyy/res-downloader](https://github.com/putyy/res-downloader)二次开发优化而来。
 > 一款基于 Go + [Wails](https://github.com/wailsapp/wails) 的跨平台资源下载工具，简洁易用，支持多种资源嗅探与下载。
 
 ## ✨ 功能特色
@@ -29,14 +30,14 @@
 ## 📚 文档 & 版本
 
 - 📘 [在线文档](https://res.putyy.com/)
-- 💬 [加入交流群](https://www.putyy.com/app/admin/upload/img/20250418/6801d9554dc7.webp)
+<!-- - 💬 [加入交流群](https://www.putyy.com/app/admin/upload/img/20250418/6801d9554dc7.webp) -->
 - 🧩 [最新版](https://github.com/video-resource-downloader/video-downloader/releases) ｜ [Mini版 使用默认浏览器展示UI](https://github.com/putyy/resd-mini) ｜ [Electron旧版 支持Win7](https://github.com/video-resource-downloader/video-downloader/tree/old)
-  > *群满时可加微信 `AmorousWorld`，请备注“来源”*
+<!--   > *群满时可加微信 `AmorousWorld`，请备注"来源"* -->
 
 ## 🧩 下载地址
 
 - 🆕 [GitHub 下载](https://github.com/video-resource-downloader/video-downloader/releases)
-- 🆕 [蓝奏云下载（密码：9vs5）](https://wwjv.lanzoum.com/b04wgtfyb)
+<!-- - 🆕 [蓝奏云下载（密码：9vs5）](https://wwjv.lanzoum.com/b04wgtfyb) -->
 - ⚠️ *Win7 用户请下载 `2.3.0` 版本*
 
 
@@ -51,7 +52,7 @@
 > 请按以下步骤操作以正确使用软件：
 
 1. 安装时务必 **允许安装证书文件** 并 **允许网络访问**
-2. 打开软件 → 首页左上角点击 **“启动代理”**
+2. 打开软件 → 首页左上角点击 **"启动代理"**
 3. 选择要获取的资源类型（默认全部）
 4. 在外部打开资源页面（如视频号、小程序、网页等）
 5. 返回软件首页，即可看到资源列表
@@ -92,6 +93,11 @@
 ## 💡 实现原理 & 初衷
 
 本工具通过代理方式实现网络抓包，并筛选可用资源。与 Fiddler、Charles、浏览器 DevTools 原理类似，但对资源进行了更友好的筛选、展示和处理，大幅度降低了使用门槛，更适合大众用户使用。
+
+## 参考项目
+
+- [https://github.com/putyy/res-downloader](https://github.com/putyy/res-downloader)
+
 
 ---
 

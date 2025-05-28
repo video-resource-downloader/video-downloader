@@ -16,6 +16,7 @@
 
 ### 🎉 Aixiang Resource Downloader
 
+> This project is a secondary development and optimization based on [putyy/res-downloader](https://github.com/putyy/res-downloader).
 > A cross-platform resource downloader built with Go + [Wails](https://github.com/wailsapp/wails).  
 Clean UI, easy to use, and supports a wide range of resource sniffing and downloading.
 
@@ -31,13 +32,13 @@ Clean UI, easy to use, and supports a wide range of resource sniffing and downlo
 
 - 📘 [Online Documentation (Chinese)](https://res.putyy.com/)
 - 🧩 [Mini Version Ui Display using default browser](https://github.com/video-resource-downloader/video-downloader) ｜ [Old Electron Version Support Win7](https://github.com/video-resource-downloader/video-downloader/tree/old)
-- 💬 [Join the User Group (Chinese)](https://www.putyy.com/app/admin/upload/img/20250418/6801d9554dc7.webp)
-  > *If full, you can add WeChat `AmorousWorld` with a note “From GitHub”*
+<!-- - 💬 [Join the User Group (Chinese)](https://www.putyy.com/app/admin/upload/img/20250418/6801d9554dc7.webp)
+  > *If full, you can add WeChat `AmorousWorld` with a note "From GitHub"* -->
 
 ## 🧩 Download Links
 
 - 🆕 [Download from GitHub](https://github.com/video-resource-downloader/video-downloader/releases)
-- 🆕 [Download via Lanzou Cloud (Password: 9vs5)](https://wwjv.lanzoum.com/b04wgtfyb)
+<!-- - 🆕 [Download via Lanzou Cloud (Password: 9vs5)](https://wwjv.lanzoum.com/b04wgtfyb) -->
 - ⚠️ *Windows 7 users: Please use version `2.3.0`*
 
 
@@ -94,6 +95,10 @@ Clean UI, easy to use, and supports a wide range of resource sniffing and downlo
 
 This tool captures traffic via a local proxy and filters useful resources.  
 Its working principle is similar to tools like Fiddler, Charles, or browser DevTools, but with a more user-friendly display and enhanced filtering, making it suitable for everyday users with minimal tech background.
+
+## References
+
+- [https://github.com/putyy/res-downloader](https://github.com/putyy/res-downloader)
 
 ---
 
