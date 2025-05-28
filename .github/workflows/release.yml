@@ -223,7 +223,7 @@ jobs:
             --privileged \
             -v $PWD:/www/video-downloader \
             -v $PWD/.gomodcache:/go/pkg/mod \
-            -v $PWD/.gobuildcache:/go/buildcache \
+            -v $PWD/.gobuildcache:/root/.cache/go-build \
             video-downloader-amd-linux bash -c '
             set -e
             cd /www/video-downloader
@@ -330,10 +330,9 @@ jobs:
             --privileged \
             -v $PWD:/www/video-downloader \
             -v $PWD/.gomodcache:/go/pkg/mod \
-            -v $PWD/.gobuildcache:/go/buildcache \
+            -v $PWD/.gobuildcache:/root/.cache/go-build \
             video-downloader-arm-linux bash -c '
             set -e
-            go env
             cd /www/video-downloader
             wails build -platform "linux/arm64" -s -skipbindings
             cp build/bin/video-downloader build/linux/Debian/usr/local/bin/
